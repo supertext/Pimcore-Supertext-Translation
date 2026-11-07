@@ -135,3 +135,7 @@ Every translation is recorded as a note of type *supertext* on the original docu
 Errors are reported per language: if one language fails, the others are still translated.
 
 Administrators also see a short **Supertext status** at the bottom of the dialog: the latest check of the API key with its time, the languages without a Supertext language, and whether version information is sent to Supertext (see the [installation guide](INSTALLATION.md#version-information-api-key-check-and-ping)).
+
+## Support
+
+Questions, problems or ideas: use the [Supertext support form](https://integrations.supertext.com/en/support?platform=pimcore). Mention the version of Pimcore and of the plugin, what you did and what you expected; an error message helps a lot. You get an answer by email, in your language.

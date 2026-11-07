@@ -25,6 +25,7 @@ All notable changes to this project are documented here. The format follows [Kee
 - Retries when the Supertext API answers HTTP 429 (rate limit).
 - English and German Studio strings.
 - Demo for Railway (`demo/`) with demo accounts, an Editors role, four languages, sample pages and an article created on every start.
+- Support: the Supertext support form is linked in the README, the user guide and GitHub's "New issue" page.
 
 ### Changed
 

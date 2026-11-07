@@ -55,6 +55,10 @@ No Supertext account yet? [Create one at supertext.com](https://www.supertext.co
 
 See [CHANGELOG.md](CHANGELOG.md) and the [roadmap](docs/DEVELOPER.md#known-limitations--roadmap).
 
+## Support
+
+Questions, problems or ideas? Use the [Supertext support form](https://integrations.supertext.com/en/support?platform=pimcore): describe what happened and you get an answer by email, in your language. Requests are tracked as issues in this repository, without your name and email address. Developers are welcome to open issues and pull requests here directly. Security issues: see [SECURITY.md](SECURITY.md).
+
 ## License
 
 MIT. © Supertext AG
