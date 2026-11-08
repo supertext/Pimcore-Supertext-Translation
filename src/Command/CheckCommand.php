@@ -58,7 +58,8 @@ final class CheckCommand extends Command
 
         $result = $this->reporting->run(InstallationReports::REPORT_CHECK);
         // Without a site URL (no request, no domain in Pimcore's system settings) nothing is reported; check the key anyway.
-        $check = $result->check ?? $this->settings->client()->checkApiKey();
+        $check = $result->check ?? KeyCheck::from($this->settings->client()->checkApiKey())
+            ?? new KeyCheck(KeyCheck::ERROR, gmdate('Y-m-d\TH:i:s\Z'));
         $ok = $check->status === KeyCheck::OK;
         $message = InstallationReports::checkMessage($check);
         $output->writeln($ok ? "<info>{$message}</info>" : "<error>{$message}</error>");

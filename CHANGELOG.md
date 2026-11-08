@@ -26,6 +26,11 @@ All notable changes to this project are documented here. The format follows [Kee
 - English and German Studio strings.
 - Demo for Railway (`demo/`) with demo accounts, an Editors role, four languages, sample pages and an article created on every start.
 - Support: the Supertext support form is linked in the README, the user guide and GitHub's "New issue" page.
+- Docs: a demo movie at the top of the README (`docs/images/demo.gif`) and a voiced install and configuration movie, recorded from the demo against the stand-in API (`npm run movie`, `npm run movie:install` in `tests/docs`); the installation guide shows *Supertext → Settings*.
+
+### Fixed
+
+- `supertext:check` no longer fails with a type error when it checks the API key without a site URL (e.g. on a server whose domain isn't set in Pimcore's system settings).
 
 ### Changed
 

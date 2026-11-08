@@ -268,9 +268,36 @@ BASE_URL=http://127.0.0.1:8080 DEMO_ADMIN_EMAIL=… DEMO_ADMIN_PASSWORD=… \
   DEMO_EDITOR_EMAIL=… DEMO_EDITOR_PASSWORD=… npm run screenshots
 ```
 
-`settings.png` (*Supertext → Settings*, as administrator) is new in the script and not generated yet: run the script against a fresh demo and add it to the installation guide's *Supertext languages* section.
+`settings.png` (*Supertext → Settings*, as administrator) shows Supertext's live API address instead of the stand-in's (the script rewrites that one value on the screen).
 
 The script uses a 1400×900 window; some clicks (the data object tree, the object's language switcher, the main menu) are at fixed positions in Studio's layout.
+
+## Demo movie
+
+`docs/images/demo.gif` (shown at the top of the README) is recorded by `tests/docs/movie.mjs` with Supertext's movie kit (`tests/docs/movie/`: Playwright screencast → ffmpeg; intro and outro cards, captions, cursor; Inter font under the SIL Open Font License in `movie/assets/fonts/`). Like the screenshots, it needs a **fresh** demo (sample content not yet translated) pointed at the stand-in API, `ffmpeg` and, for the voice, Piper:
+
+```bash
+pip install piper-tts                       # the voice; without it (or with MOVIE_VOICE=0) the movie is silent
+cd tests/docs && npm install
+npm run stand-in &                          # http://127.0.0.1:8765/v1/
+# a fresh demo (new database, DEMO_* set) with SUPERTEXT_API_URL=http://127.0.0.1:8765/v1/,
+#   SUPERTEXT_REPORT_URL=http://127.0.0.1:8765/report and SUPERTEXT_API_KEY=st-demo-0000-0000-0000, e.g. on :8080
+BASE_URL=http://127.0.0.1:8080 DEMO_EDITOR_EMAIL=… DEMO_EDITOR_PASSWORD=… npm run movie
+```
+
+About 43 seconds, 1280×720, an English voice and English captions: the demo editor has the English home page open in Pimcore Studio (the document tree folded away, so the caption never covers the toolbar), clicks *Translate with Supertext*, keeps German and French, unticks Italian, clicks *Translate* (the waiting time is cut) and opens the new, unpublished German page with *Open*. The script writes the GIF (800 px, 12 fps, keep it under 3 MB) to `docs/images/demo.gif` and the MP4 to `tests/docs/movie/out/Pimcore-Supertext-Translation.mp4` (git-ignored; `MOVIE_OUT` changes the path). The MP4 is not committed; the GIF is silent. The voice model (63 MB, pinned revision, checked by SHA-256) is downloaded once into `tests/docs/movie/voice-cache/` (git-ignored, never committed); the time spent generating speech is cut from the movie. Re-record it in the same commit when the toolbar button or the translate dialog change.
+
+**Install and configuration movie** (`tests/docs/movie-install.mjs`, `npm run movie:install`): the same kit, voice and look, for administrators. Same setup as above (a fresh demo isn't needed), but signed in as the demo **administrator**:
+
+```bash
+BASE_URL=http://127.0.0.1:8080 DEMO_ADMIN_EMAIL=… DEMO_ADMIN_PASSWORD=… npm run movie:install
+```
+
+About 90 seconds: a terminal (`kit.terminal()`) with the commands from `docs/INSTALLATION.md` (`composer config repositories…`, `composer require`, the line in `config/bundles.php`, `pimcore:bundle:install`, `assets:install`, `cache:clear`, the key as environment variable in `.env.local` with the fake key `st-demo-0000-0000-0000`, `supertext:check` with *the connection to Supertext works*; output shortened), where the key comes from (supertext.com → Integrations → API; create an account at supertext.com), then Pimcore Studio: the languages under *System → System Settings → Localization*, *Supertext → Settings* (the API key *Set* from the environment variable, Supertext's live API address shown instead of the stand-in's, German (Switzerland) → *German (Switzerland) (de-CH)*, *Translation review* left off, *Save*), and where editors find *Translate with Supertext*. No GIF; the MP4 goes to `tests/docs/movie/out/Pimcore-Supertext-Translation-install.mp4` (git-ignored, not committed; `MOVIE_OUT` changes the path). Re-record it when the installation steps or *Supertext → Settings* change.
+
+Both scripts find Studio's main menu and the document tree's fold button by their elements, not by position; the window is 1280×720.
+
+Voice: Piper voice “alba” (en_GB), trained on a dataset from the University of Edinburgh's Centre for Speech Technology Research, CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/)
 
 ## Code quality and security checks
 

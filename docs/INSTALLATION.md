@@ -106,6 +106,8 @@ Each Pimcore language has a Supertext language. Choose them in Pimcore Studio un
 
 The third column, **Translation review**, is off by default (see [Translation review](#translation-review)).
 
+![Pimcore Studio, Supertext → Settings: the version, the API key set by the SUPERTEXT_API_KEY environment variable with the account and API key links, the API address, and the languages English, German, French and Italian (Switzerland) with their Supertext language, formal or informal, and Translation review unticked](images/settings.png)
+
 Every select is preselected, so most sites only check them and save:
 
 - the Supertext language you chose and saved, else

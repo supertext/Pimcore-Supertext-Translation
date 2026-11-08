@@ -2,6 +2,8 @@
 
 Translate Pimcore documents and data objects into your other languages with **Supertext AI**, right in Pimcore Studio.
 
+![Demo: an English page in Pimcore Studio is translated with Supertext into German and French, then the German page is opened](docs/images/demo.gif)
+
 Open a page or a data object, click **Translate with Supertext** in the toolbar, tick the languages and click **Translate**. Pages come back as unpublished, linked translations in each language's document tree; data objects get their localized fields filled in a new version. Editors review, adjust and publish as usual.
 
 - Uses Pimcore's own languages, linked document translations and localized fields

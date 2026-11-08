@@ -28,6 +28,11 @@ const editorArea = { x: 380, y: 0, width: 970, height: 900 }
 
 async function login (user, password) {
   const page = await browser.newPage({ viewport: { width: 1400, height: 900 }, deviceScaleFactor: 1 })
+  // Supertext → Settings shows the API address: show Supertext's live one, never the local stand-in.
+  await page.addInitScript((live) => {
+    const fix = () => document.querySelectorAll('.supertext-settings-status code').forEach((c) => { if (c.textContent !== live) c.textContent = live })
+    new MutationObserver(fix).observe(document, { childList: true, subtree: true, characterData: true })
+  }, 'https://api.supertext.com/v1/')
   await page.goto(base + '/pimcore-studio/')
   await page.waitForSelector('input[type=password]', { timeout: 120000 })
   await page.locator('input[name=username]').fill(user)
