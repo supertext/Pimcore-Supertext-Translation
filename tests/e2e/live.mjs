@@ -53,7 +53,9 @@ const TAGS = [['links', '<a '], ['bold', '<strong'], ['italics', '<em'], ['list 
 /** The demo's content at its latest versions (tests/e2e/export.php inside the container). */
 function snapshot () {
   execFileSync('docker', ['cp', fileURLToPath(new URL('./export.php', import.meta.url)), `${CONTAINER}:/tmp/e2e-export.php`])
-  const out = execFileSync('docker', ['exec', '-u', 'www-data', '-w', '/app/demo/project', CONTAINER, 'php', '/tmp/e2e-export.php'], { encoding: 'utf8', maxBuffer: 32 << 20 })
+  // The entrypoint derives DATABASE_URL (MYSQL_URL + PIMCORE_DB_NAME) for its own processes only; docker exec doesn't see it.
+  const env = process.env.DEMO_DATABASE_URL ? ['-e', `DATABASE_URL=${process.env.DEMO_DATABASE_URL}`] : []
+  const out = execFileSync('docker', ['exec', ...env, '-u', 'www-data', '-w', '/app/demo/project', CONTAINER, 'php', '/tmp/e2e-export.php'], { encoding: 'utf8', maxBuffer: 32 << 20 })
   const json = out.split('@@E2E@@\n')[1]
   if (!json) throw new Error(`export.php printed no result:\n${out}`)
   return JSON.parse(json)

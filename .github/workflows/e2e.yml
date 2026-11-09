@@ -173,6 +173,7 @@ jobs:
         env:
           STUDIO_URL: ${{ env.LIVE_URL }}
           DEMO_CONTAINER: demo-live
+          DEMO_DATABASE_URL: mysql://root:root@127.0.0.1:3306/pimcore_live?serverVersion=8.0.0
           EDITOR_EMAIL: ${{ env.DEMO_EDITOR_EMAIL }}
           EDITOR_PASSWORD: ${{ env.DEMO_EDITOR_PASSWORD }}
         run: node live.mjs
