@@ -13,7 +13,10 @@ export DEMO_ADMIN_EMAIL=ci-admin@example.com DEMO_ADMIN_PASSWORD="Ci-$(openssl r
 export DEMO_EDITOR_EMAIL=ci-editor@example.com DEMO_EDITOR_PASSWORD="Ci-$(openssl rand -hex 12)"
 export APPLICATION_SECRET="$(openssl rand -hex 32)" MERCURE_JWT_KEY="$(openssl rand -hex 32)"
 q() { mysql ${MYSQL_ARGS:--h 127.0.0.1 -P 3306 -uroot -proot} -N --default-character-set=utf8mb4 "$DB" -e "$1"; }
-console() { docker exec -u www-data demo bin/console "$@"; }
+# `docker exec` doesn't see the DATABASE_URL the entrypoint derives from MYSQL_URL (the demo's own
+# database "pimcore" on that server): pass the same URL, or the console falls back to .env's credentials.
+DEMO_DB_URL=$(python3 -c 'import os, urllib.parse as p; u = p.urlsplit(os.environ["MYSQL_URL"]); q = lambda v: p.quote(p.unquote(v or ""), safe=""); print(f"mysql://{q(u.username)}:{q(u.password)}@{u.hostname or "127.0.0.1"}:{u.port or 3306}/pimcore?serverVersion=8.0.0")')
+console() { docker exec -u www-data -e DATABASE_URL="$DEMO_DB_URL" demo bin/console "$@"; }
 
 start() {
 	docker rm -f demo >/dev/null 2>&1 || true
