@@ -4,6 +4,10 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## Unreleased
 
+## 1.0.0 — 2026-11-10
+
+First stable release. Every plugin release is now tested end to end against the live Supertext API (`.github/workflows/e2e.yml`).
+
 ### Added
 
 - **Translation review** on/off per language on *Supertext → Settings* (a checkbox next to the Supertext language): translations into a language with *Translation review* ticked go through Supertext's review service (Supertext Localization Review), where customers and Supertext linguists correct them on the website with a Chrome extension; corrections come back into Pimcore with the next translation, and texts translated before keep their (reviewed) wording. Same API key, billing, languages and messages; other languages keep going directly to Supertext. New setting `review_url` (defaults to Supertext's review service; `''` turns review off everywhere), environment variable `SUPERTEXT_REVIEW_URL`, override `languages.<language>.review`. All four interface languages.
