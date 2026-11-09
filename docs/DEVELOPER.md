@@ -198,6 +198,27 @@ cd assets && npm run check-types && npm run build
 - `tests/demo-check.sh` (CI): the demo image on MySQL and OpenSearch with the stand-in, started twice: demo accounts created once and never duplicated, no passwords in the log, the Editors role and the permission, `supertext:check`, the parent-page rule, translation of the sample pages and article as the editor into three languages (titles, slug keys, HTML with markup, link texts, unpublished pages, linked translations, notes), the skip on a second run, `supertext:check` (key check and language mapping), saving the language mapping through `POST /supertext/settings/languages` (administrator; invalid codes and the editor refused), the public ping (200 with the challenge, 400 otherwise), an export → import round trip of the article through the Studio API, and an `installed` report after a Studio request as administrator, sent to the stand-in's `POST /report` (`SUPERTEXT_REPORT_URL`), with the state stored in `settings_store` and no key in it.
 
 CI (`.github/workflows/ci.yml`) on every push and pull request: **test** (PHP lint, PHPUnit; PHP 8.4 and 8.5), **phpstan** (see *Code quality and security checks*), **studio** (type check and build of the plugin) and **demo** (builds `demo/Dockerfile`, runs `tests/demo-check.sh`). The demo job needs the repository secrets `PIMCORE_ENCRYPTION_SECRET`, `PIMCORE_INSTANCE_IDENTIFIER` and `PIMCORE_PRODUCT_KEY`, and skips itself without them (e.g. for pull requests from forks).
+`.github/workflows/checks.yml` and `links.yml` lint the workflows and check the links. `.github/workflows/e2e.yml` runs the end-to-end test against the real Supertext API and regenerates the docs screenshots (see *End-to-end tests*).
+
+## End-to-end tests
+
+The unit tests and the demo check use fakes and the stand-in. `.github/workflows/e2e.yml` also tests against the **real Supertext API**, so changes on Supertext's side (language codes, regional variants, formatting, rate limits) show up. It runs on every push to `main` that touches the bundle, the Studio plugin, the demo or the tests, on pull requests that change the E2E test or workflow, every Monday (05:45 UTC), and by hand (*Actions → E2E → Run workflow*). It needs the Pimcore product key secrets (see [Pimcore product key](#pimcore-product-key)) and without them runs only the language list (`features.mjs`, below), with a warning. It builds the demo image once (Docker layer cache in GitHub Actions) and starts it twice on MySQL and OpenSearch services, each with its own database (`PIMCORE_DB_NAME`) and demo accounts made up for the run:
+
+1. **Real API** (repository or organization secret `SUPERTEXT_API_KEY`, set by Remy; without it these steps are skipped with a warning). Version reports are off (`SUPERTEXT_VERSION_REPORTS=0`), so CI runs don't appear in the Commando Center.
+   - `tests/e2e/features.mjs` asks the live `GET features` (cost-free, no plugin or SDK code) whether every pair the demo translates (`en` → `de-CH`, `fr-CH`, `it-CH`) is offered; a missing pair fails the run. Whether the plugin's own language list matches the API is the SDK's job (its own tests).
+   - `tests/e2e/live.mjs` (Playwright) logs in to Pimcore Studio as the demo editor (`DEMO_EDITOR_*`) and translates into every target language: the home page `/en` and the article `/Articles/swiss-chocolate` through the Supertext dialog in their editors, the pages below `/en` through the same Studio API route the dialog calls (`POST /pimcore-studio/api/supertext/elements/document/{id}/translate`, in the editor's session; opening a nested page needs fixed-position clicks in Studio's tree). The dialog must show a success for every language and no error. `tests/e2e/export.php`, copied into the demo container and run there (`docker exec`), prints the content at its latest versions (what Studio shows; the bundle saves existing translations and data objects as new versions) as JSON. Checked: every English page has a linked translation in each language with the right `language` property, new pages are unpublished, the article's published data is unchanged and it stays published, every text (title, description, navigation name, editables, link text, the article's fields) is filled and at least 80 % of them changed (a name like "Bern" can stay the same; unchanged ones are printed as `note`), no `data-st-id`/placeholder is left, links (and their targets), bold, list items and paragraphs are kept, the text is in the target language (common words of each language counted) and de-CH has no "ß". Then everything is translated again with *Overwrite existing translations*: the same documents and the same object get a new version, no documents or objects are added, and there is one Supertext note per element and language and run. Each run translates the demo content twice into three languages (around 4,000 characters on the key's account).
+2. **Stand-in API**: the live demo is stopped and the OpenSearch indices dropped first (both demos use Mercure's port 3000 and the same index names), then the docs screenshots are taken (see *Docs screenshots*), so the images don't change with each machine translation. If `docs/images/` changed, a second job pushes the branch `automation/docs-screenshots` and opens (or updates) the pull request "Docs: regenerate screenshots". This needs *Settings → Actions → General → Allow GitHub Actions to create and approve pull requests*.
+
+If a run fails, the artifact `e2e-debug` has the test's screenshots (dialog before and after each step, errors), both demos' container logs, `var/log`, the install, worker and search index logs, and the stand-in log. Locally:
+
+```bash
+cd tests/e2e && npm install && npx playwright install chromium
+# fresh demo container named demo-live (new database) with a real SUPERTEXT_API_KEY, e.g. on port 8081
+SUPERTEXT_API_KEY=… E2E_TARGETS=de-CH,fr-CH,it-CH node features.mjs
+STUDIO_URL=http://127.0.0.1:8081 DEMO_CONTAINER=demo-live EDITOR_EMAIL=… EDITOR_PASSWORD=… npm run live
+```
+
+`live.mjs` also runs against the stand-in API, which returns real translations for the demo content, to try changes to it without a key.
 
 ## Demo (Railway)
 
@@ -227,7 +248,7 @@ The public demo is a container built from `demo/Dockerfile`: PHP 8.4 with Apache
 
 | Variable | |
 | --- | --- |
-| `MYSQL_URL` | `${{MySQL.MYSQL_URL}}`; the demo uses the database `PIMCORE_DB_NAME` (default `pimcore`) on that server. `DATABASE_URL` works too. |
+| `MYSQL_URL` | `${{MySQL.MYSQL_URL}}`; the demo uses the database `PIMCORE_DB_NAME` (default `pimcore`) on that server. `DATABASE_URL` works too. The entrypoint keeps the resulting `DATABASE_URL` in the container's `.env.local`, so `docker exec … bin/console` (and Railway's shell) reach the same database. |
 | `PIMCORE_DB_SERVER_VERSION` | `8.0.0` for MySQL, e.g. `mariadb-10.11.14` for MariaDB |
 | `PIMCORE_OPENSEARCH_DSN` | `opensearch://pimcore-opensearch.railway.internal:9200?ssl=false` |
 | `PIMCORE_ENCRYPTION_SECRET`, `PIMCORE_INSTANCE_IDENTIFIER`, `PIMCORE_PRODUCT_KEY` | The registered instance (see [Pimcore product key](#pimcore-product-key)) |
@@ -271,6 +292,7 @@ BASE_URL=http://127.0.0.1:8080 DEMO_ADMIN_EMAIL=… DEMO_ADMIN_PASSWORD=… \
 `settings.png` (*Supertext → Settings*, as administrator) shows Supertext's live API address instead of the stand-in's (the script rewrites that one value on the screen).
 
 The script uses a 1400×900 window; some clicks (the data object tree, the object's language switcher, the main menu) are at fixed positions in Studio's layout.
+The dialog's "Translated with Supertext on …" dates are shown as 1 October 2026 (the script rewrites them in the dialog's API answers), so the images only change when the UI does. In CI the E2E workflow takes them (see *End-to-end tests*). The script uses a 1400×900 window; some clicks (the data object tree, the object's language switcher, the main menu) are at fixed positions in Studio's layout.
 
 ## Demo movie
 

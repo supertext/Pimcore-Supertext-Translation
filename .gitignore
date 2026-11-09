@@ -8,6 +8,9 @@
 /demo/project/.env.local
 /demo/project/.env.*.local
 /tests/docs/node_modules/
+/tests/docs/stand-in.log
+/tests/e2e/node_modules/
+/tests/e2e/artifacts/
 /.phpunit.cache
 /.phpunit.result.cache
 .env

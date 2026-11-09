@@ -24,10 +24,21 @@ const shot = async (page, name, target, pad = 0) => {
   console.log('docs/images/' + name)
 }
 const modal = '.ant-modal-content'
+const FIXED_DATE = Date.UTC(2026, 9, 1, 12) / 1000
 const editorArea = { x: 380, y: 0, width: 970, height: 900 }
 
 async function login (user, password) {
   const page = await browser.newPage({ viewport: { width: 1400, height: 900 }, deviceScaleFactor: 1 })
+  // The dialog's "Translated with Supertext on <date>" tags would change the images every day:
+  // show a fixed date (1 October 2026), so CI only proposes new images when the UI changes.
+  await page.route('**/pimcore-studio/api/supertext/elements/**', async (route) => {
+    if (route.request().method() !== 'GET') return route.continue()
+    const response = await route.fetch()
+    const body = await response.json().catch(() => null)
+    if (!body) return route.fulfill({ response })
+    for (const l of body.languages ?? []) if (l.lastTranslation != null) l.lastTranslation = FIXED_DATE
+    await route.fulfill({ response, json: body })
+  })
   // Supertext → Settings shows the API address: show Supertext's live one, never the local stand-in.
   await page.addInitScript((live) => {
     const fix = () => document.querySelectorAll('.supertext-settings-status code').forEach((c) => { if (c.textContent !== live) c.textContent = live })
