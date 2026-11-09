@@ -74,6 +74,13 @@ if [ "$installed" = "no" ]; then
   echo "[demo] Pimcore installed."
 fi
 
+# Console commands run with `docker exec` (or Railway's shell) don't inherit the DATABASE_URL derived
+# above: keep it in .env.local, which Symfony reads (real environment variables still win).
+umask 027
+printf "DATABASE_URL='%s'\n" "$DATABASE_URL" > .env.local
+chown root:www-data .env.local
+umask 022
+
 console cache:clear --no-warmup > /dev/null
 # The warmup also unpacks Pimcore Studio's frontend (into vendor/pimcore/*/public) before
 # assets:install copies it to public/bundles.

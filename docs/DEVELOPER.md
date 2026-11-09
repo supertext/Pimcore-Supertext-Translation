@@ -248,7 +248,7 @@ The public demo is a container built from `demo/Dockerfile`: PHP 8.4 with Apache
 
 | Variable | |
 | --- | --- |
-| `MYSQL_URL` | `${{MySQL.MYSQL_URL}}`; the demo uses the database `PIMCORE_DB_NAME` (default `pimcore`) on that server. `DATABASE_URL` works too. |
+| `MYSQL_URL` | `${{MySQL.MYSQL_URL}}`; the demo uses the database `PIMCORE_DB_NAME` (default `pimcore`) on that server. `DATABASE_URL` works too. The entrypoint keeps the resulting `DATABASE_URL` in the container's `.env.local`, so `docker exec … bin/console` (and Railway's shell) reach the same database. |
 | `PIMCORE_DB_SERVER_VERSION` | `8.0.0` for MySQL, e.g. `mariadb-10.11.14` for MariaDB |
 | `PIMCORE_OPENSEARCH_DSN` | `opensearch://pimcore-opensearch.railway.internal:9200?ssl=false` |
 | `PIMCORE_ENCRYPTION_SECRET`, `PIMCORE_INSTANCE_IDENTIFIER`, `PIMCORE_PRODUCT_KEY` | The registered instance (see [Pimcore product key](#pimcore-product-key)) |
