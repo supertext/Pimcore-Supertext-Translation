@@ -1,0 +1,37 @@
+{
+  "allFiles": [
+    "/bundles/supertexttranslation/build/c0ce79c8b31f/static/js/main.a5551ff1.js",
+    "/bundles/supertexttranslation/build/c0ce79c8b31f/static/js/remoteEntry.js",
+    "/bundles/supertexttranslation/build/c0ce79c8b31f/static/js/async/__federation_expose_default_export.f6c4e53a.js",
+    "/bundles/supertexttranslation/build/c0ce79c8b31f/static/js/237.30497fec.js",
+    "/bundles/supertexttranslation/build/c0ce79c8b31f/mf-stats.json",
+    "/bundles/supertexttranslation/build/c0ce79c8b31f/mf-manifest.json",
+    "/bundles/supertexttranslation/build/c0ce79c8b31f/main.html"
+  ],
+  "entries": {
+    "main": {
+      "html": [
+        "/bundles/supertexttranslation/build/c0ce79c8b31f/main.html"
+      ],
+      "initial": {
+        "js": [
+          "/bundles/supertexttranslation/build/c0ce79c8b31f/static/js/237.30497fec.js",
+          "/bundles/supertexttranslation/build/c0ce79c8b31f/static/js/main.a5551ff1.js"
+        ]
+      }
+    },
+    "supertext_translation_bundle": {
+      "initial": {
+        "js": [
+          "/bundles/supertexttranslation/build/c0ce79c8b31f/static/js/remoteEntry.js"
+        ]
+      },
+      "async": {
+        "js": [
+          "/bundles/supertexttranslation/build/c0ce79c8b31f/static/js/async/__federation_expose_default_export.f6c4e53a.js"
+        ]
+      }
+    }
+  },
+  "integrity": {}
+}

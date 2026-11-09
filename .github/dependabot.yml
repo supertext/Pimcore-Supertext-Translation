@@ -8,6 +8,38 @@ updates:
     groups:
       minor-and-patch:
         update-types: ["minor", "patch"]
+  - package-ecosystem: "npm"
+    directory: "/assets"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    ignore:
+      # Pimcore Studio shares React 18.3 with the plugin through Module Federation
+      # (@pimcore/studio-ui-bundle depends on react/react-dom 18.3.x): the plugin must use the host's React.
+      - dependency-name: "react"
+        versions: [">=19"]
+      - dependency-name: "react-dom"
+        versions: [">=19"]
+      - dependency-name: "@types/react"
+        versions: [">=19"]
+      - dependency-name: "@types/react-dom"
+        versions: [">=19"]
+      # Studio 2026.3's build plugins (pluginGenerateEntrypoints, pluginWriteBuildId) are made for Rsbuild 1.
+      - dependency-name: "@rsbuild/core"
+        versions: [">=2"]
+      - dependency-name: "@rsbuild/plugin-react"
+        versions: [">=2"]
+    groups:
+      minor-and-patch:
+        update-types: ["minor", "patch"]
+  - package-ecosystem: "npm"
+    directory: "/tests/docs"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    groups:
+      minor-and-patch:
+        update-types: ["minor", "patch"]
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:

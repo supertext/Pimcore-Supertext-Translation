@@ -44,7 +44,7 @@ final class SettingsTest extends TestCase
             ],
             'object_field_types' => [],
             'document_editable_types' => [],
-        ], $this->createMock(HttpClientInterface::class));
+        ], $this->createStub(HttpClientInterface::class));
     }
 
     public function testLanguageMapping(): void
@@ -78,7 +78,7 @@ final class SettingsTest extends TestCase
             'environment' => 'live', 'api_url' => '', 'timeout' => 180, 'poll_interval' => 2.0, 'version_reports' => true,
             'languages' => ['en' => ['code' => 'en-US', 'politeness' => '']],
             'object_field_types' => [], 'document_editable_types' => [],
-        ], $this->createMock(HttpClientInterface::class), $store);
+        ], $this->createStub(HttpClientInterface::class), $store);
 
         self::assertSame('en-US', $settings->languageCode('en'));
         self::assertSame('it-CH', $settings->languageCode('it'));

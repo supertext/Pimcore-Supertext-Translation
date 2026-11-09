@@ -315,6 +315,13 @@ Dependabot (`.github/dependabot.yml`) opens weekly pull requests: minor and patc
 
 `.github/workflows/dependabot-merge.yml` merges a minor or patch package update by itself once every other check on its pull request has passed (it waits up to 85 minutes and leaves the pull request alone if a check fails). GitHub Actions updates and majors stay for a person: the workflow's built-in token can't merge changes to workflow files, and a major needs a decision. Merges by the workflow don't start CI on `main`; the weekly health check looks at `main`.
 
+The Studio plugin's build tooling (`assets/`) follows what Pimcore Studio itself uses: Module Federation 2 (`@module-federation/rsbuild-plugin` 2, like Studio's `@module-federation/enhanced` 2), Rsbuild 1 and React 18.3. `assets/package.json` overrides `adm-zip` (^0.6.1) and `uuid` (^11.1.1), which `@pimcore/studio-ui-bundle` 2026.3 pulls in at vulnerable versions; they are only used by the build (`npm audit` is clean). Major updates the plugin can't take are ignored in `.github/dependabot.yml`:
+
+- `react`, `react-dom`, `@types/react`, `@types/react-dom` >=19: Pimcore Studio 2026.3 shares React 18.3 with the plugin through Module Federation (`@pimcore/studio-ui-bundle` depends on `react` 18.3.x), so the plugin must build against the host's React.
+- `@rsbuild/core`, `@rsbuild/plugin-react` >=2: Studio 2026.3's build plugins (`pluginGenerateEntrypoints`, `pluginWriteBuildId`) are made for Rsbuild 1 (Studio builds with Rsbuild 1 too).
+
+Remove a rule when a new Studio version moves to React 19 or Rsbuild 2 (check `npm view @pimcore/studio-ui-bundle dependencies devDependencies`); remove the overrides when Studio requires fixed versions.
+
 ## Releasing
 
 Releases are published by `.github/workflows/release.yml` when the version is officially bumped; nobody tags or creates releases by hand.
