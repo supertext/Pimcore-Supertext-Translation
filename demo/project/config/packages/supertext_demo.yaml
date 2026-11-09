@@ -1,4 +1,4 @@
-# Supertext demo: languages (read-only in Studio, defined here), the Supertext language mapping and tone.
+# Supertext demo: languages (read-only in Studio, defined here).
 pimcore:
     config_location:
         system_settings:
@@ -11,11 +11,5 @@ pimcore:
         default_language: en
         fallback_languages: { de_CH: '', fr_CH: '', it_CH: '' }
 
-# de_CH, fr_CH and it_CH are Supertext codes as they are; "en" needs a mapping (Supertext has no bare
-# English target), here British English. The source is sent as "en" either way.
-supertext_translation:
-    languages:
-        en: { code: en-GB }
-        de_CH: { politeness: more }
-        fr_CH: { politeness: more }
-        it_CH: { politeness: more }
+# The Supertext language mapping (en → en-GB, the Swiss languages formal) is saved on the
+# Supertext → Settings screen by supertext:demo-setup, so the screen shows it (not overridden here).

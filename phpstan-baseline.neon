@@ -4,5 +4,5 @@ parameters:
 			# getLocalizedfields() is generated for every class with localized fields (checked before use).
 			message: '#^Call to an undefined method Pimcore\\Model\\DataObject\\Concrete\:\:getLocalizedfields\(\)\.$#'
 			identifier: method.notFound
-			count: 3
+			count: 5
 			path: src/Service/ObjectTranslator.php

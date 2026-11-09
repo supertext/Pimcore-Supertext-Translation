@@ -13,8 +13,8 @@ use Supertext\PimcoreTranslationBundle\Settings;
 /**
  * Sends values to Supertext as one HTML document per target language (one data-st-id
  * element per value; split below the API's size limit by the Supertext SDK) and returns
- * the translations. Languages are resolved without guessing (Settings::languageCode(): the mapping,
- * else an exact Supertext code, else `unsupported-language` and nothing is sent).
+ * the translations. Languages are resolved by Settings::languageCode(): the mapping, else an exact
+ * Supertext code, else the SDK's default, else `unsupported-language` and nothing is sent.
  */
 final class SegmentTranslator
 {
@@ -50,7 +50,8 @@ final class SegmentTranslator
             return [];
         }
         $this->assertConfigured();
-        $client = $this->client ?? $this->settings->client();
+        // Languages with Translation review go through Supertext's review service (same key and protocol).
+        $client = ($this->client ?? $this->settings->client())->forReview($this->settings->review($targetLanguage));
 
         $target = $this->settings->languageCode($targetLanguage);
         $source = $this->settings->sourceCode($sourceLanguage);

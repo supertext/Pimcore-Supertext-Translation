@@ -230,4 +230,68 @@ final class SupertextClientTest extends TestCase
         self::assertSame(SupertextClient::STAGING, SupertextClient::baseUrlFor('staging'));
         self::assertSame('http://127.0.0.1:8765/v1/', SupertextClient::baseUrlFor('live', 'http://127.0.0.1:8765/v1/'));
     }
+
+    /** @return callable(string, string, ?string): array{status: int, body: string} a Supertext that answers every call */
+    private static function supertext(): callable
+    {
+        return static fn (string $method, string $url): array => match (true) {
+            $method === 'POST'                  => ['status' => 200, 'body' => '{"file_id":"f1"}'],
+            str_ends_with($url, '/status')      => ['status' => 200, 'body' => '{"status":"done"}'],
+            str_ends_with($url, '/translation') => ['status' => 200, 'body' => '<div data-st-id="0">Hallo</div>'],
+            default                             => ['status' => 200, 'body' => '{"languages":[]}'],
+        };
+    }
+
+    private function reviewClient(string $reviewUrl): SupertextClient
+    {
+        $handler = self::supertext();
+        $transport = function (string $method, string $url, array $headers, ?string $body) use ($handler): array {
+            $this->calls[] = compact('method', 'url', 'headers', 'body');
+
+            return $handler($method, $url, $body) + ['headers' => []];
+        };
+
+        return new SupertextClient('test-key', 'https://api.test/v1/', $transport, 10, 0.01, static function (): void {
+        }, 'Pimcore-Supertext-Translation/1.2.0', $reviewUrl);
+    }
+
+    public function testTranslationReviewGoesThroughTheReviewService(): void
+    {
+        $client = $this->reviewClient('https://review.test/v1/');
+        self::assertSame($client, $client->forReview(false));
+        $review = $client->forReview(true);
+        self::assertNotSame($client, $review);
+        self::assertSame($review, $client->forReview(true), 'one review client');
+
+        self::assertStringContainsString('Hallo', $review->translateDocument('<div data-st-id="0">Hello</div>', 'de-CH', 'en'));
+        self::assertSame(
+            ['POST translate/ai/file', 'GET translate/ai/file/f1/status', 'GET translate/ai/file/f1/translation', 'DELETE translate/ai/file/f1'],
+            array_map(static fn (array $c): string => $c['method'] . ' ' . str_replace('https://review.test/v1/', '', $c['url']), $this->calls),
+            'upload, status, download and delete all at the review service'
+        );
+        foreach ($this->calls as $call) {
+            self::assertSame('Supertext-Auth-Key test-key', $call['headers']['Authorization'], 'the same key');
+            self::assertStringContainsString('Pimcore-Supertext-Translation/1.2.0', $call['headers']['User-Agent'], 'the same User-Agent, with the version');
+        }
+
+        // Other languages and the key check go directly to Supertext.
+        $this->calls = [];
+        $client->translateDocument('<div data-st-id="0">Hello</div>', 'fr-CH', 'en');
+        $client->checkApiKey();
+        foreach ($this->calls as $call) {
+            self::assertStringStartsWith('https://api.test/v1/', $call['url']);
+        }
+        self::assertCount(5, $this->calls);
+    }
+
+    public function testTranslationReviewOffWithoutReviewUrl(): void
+    {
+        $client = $this->reviewClient('');
+        self::assertSame($client, $client->forReview(true), 'empty review_url: review off for every language');
+
+        $client = $this->reviewClient(' https://api.test/v1 ');
+        self::assertSame($client, $client->forReview(true), 'the same address as the API: no second client');
+
+        self::assertSame('https://localizationreview-production.up.railway.app/v1/', SupertextClient::REVIEW_URL);
+    }
 }

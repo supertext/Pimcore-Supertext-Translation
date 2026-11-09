@@ -140,6 +140,58 @@ final class ObjectTranslator
         return $results;
     }
 
+    /**
+     * The texts an API translation from $source into $target would send, for a translation file
+     * (Export for translation / Import translation), from the latest version; `kept`: the target
+     * already has text and $overwrite is off; `editable`: the user may edit the target language.
+     *
+     * @return array{source: string, segments: array<string, array{text: string, html: bool}>, kept: bool, editable: bool}
+     */
+    public function fileSegments(Concrete $object, string $source, string $target, bool $overwrite, User $user): array
+    {
+        $object = $this->latest($object, $user);
+        $fields = $this->fields($object);
+        $segments = [];
+        foreach ($fields as $name => $html) {
+            $value = trim((string) $object->getLocalizedfields()->getLocalizedValue($name, $source, true));
+            if ($value !== '' && !($html && trim(strip_tags($value)) === '')) {
+                $segments[$name] = ['text' => $value, 'html' => $html];
+            }
+        }
+        $editable = DataObjectService::getLanguagePermissions($object, $user, 'lEdit');
+
+        return [
+            'source' => $source,
+            'segments' => $segments,
+            'kept' => !$overwrite && $this->hasContent($object, $fields, $target),
+            'editable' => $editable === null || isset($editable[$target]),
+        ];
+    }
+
+    /**
+     * Writes translations from a file (field name => text) into $target, like an API translation:
+     * one new version (not published) with a note, and the Supertext history entry.
+     *
+     * @param array<string, string> $translated
+     */
+    public function writeTranslations(Concrete $object, string $source, string $target, array $translated, User $user): void
+    {
+        $object = $this->latest($object, $user);
+        $editable = DataObjectService::getLanguagePermissions($object, $user, 'lEdit');
+        if ($editable !== null && !isset($editable[$target])) {
+            throw new SupertextException('You are not allowed to edit this language.', key: 'language-not-allowed');
+        }
+        $fields = $this->fields($object);
+        foreach ($translated as $name => $value) {
+            if (isset($fields[$name]) && trim($value) !== '') {
+                $object->getLocalizedfields()->setLocalizedValue($name, $value, $target);
+            }
+        }
+        $object->setUserModification($user->getId());
+        $object->saveVersion(true, true, sprintf('Translation file imported (Supertext): %s → %s', $source, $target));
+        $this->history->record($object, $source, $target, $user->getId());
+    }
+
     /** True if any translatable field has text in the language (fallback values ignored). */
     private function hasContent(Concrete $object, array $fields, string $language): bool
     {

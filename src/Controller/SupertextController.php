@@ -12,15 +12,22 @@ use Pimcore\Model\Document\PageSnippet;
 use Pimcore\Model\User;
 use Pimcore\Tool;
 use Psr\Log\LoggerInterface;
+use Supertext\PimcoreTranslationBundle\Api\FileExchange;
 use Supertext\PimcoreTranslationBundle\Api\InstallationReports;
 use Supertext\PimcoreTranslationBundle\Api\LanguageCodes;
+use Supertext\PimcoreTranslationBundle\Api\LanguageMapping;
 use Supertext\PimcoreTranslationBundle\Api\SupertextException;
 use Supertext\PimcoreTranslationBundle\Reporting\Reporting;
 use Supertext\PimcoreTranslationBundle\Service\DocumentTranslator;
 use Supertext\PimcoreTranslationBundle\Service\ObjectTranslator;
+use Supertext\PimcoreTranslationBundle\LanguageStore;
+use Supertext\PimcoreTranslationBundle\Sdk\V1\Languages;
+use Supertext\PimcoreTranslationBundle\Service\TranslationFileElements;
 use Supertext\PimcoreTranslationBundle\Settings;
 use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Serializer\SerializerInterface;
 
@@ -29,7 +36,10 @@ use Symfony\Component\Serializer\SerializerInterface;
  *
  *   GET  /supertext/elements/{type}/{id}             languages and their state for the translate dialog
  *   POST /supertext/elements/{type}/{id}/translate   {source?, targets[], overwrite}
- *   GET  /supertext/settings                         API key status and check, version reports, API address, languages
+ *   GET  /supertext/elements/{type}/{id}/export      ?targets=de,fr&format=xliff|html&source=&overwrite=  (Export for translation: the file)
+ *   POST /supertext/import                           multipart file, includeChanged, overwrite (Import translation)
+ *   GET  /supertext/settings                         API key status and check, version reports, API address, languages and Supertext's targets
+ *   POST /supertext/settings/languages               {languages: {<language>: {code, politeness, review}}} the language mapping (admins)
  *   POST /supertext/settings/test                    checks the API key, cost-free (admins)
  *
  * {type} is "document" or "data-object". Every endpoint queues the Commando Center's onRequest for
@@ -45,6 +55,7 @@ final class SupertextController extends AbstractApiController
         private readonly DocumentTranslator $documents,
         private readonly LoggerInterface $logger,
         private readonly Reporting $reporting,
+        private readonly LanguageStore $languageStore,
     ) {
         parent::__construct($serializer);
     }
@@ -123,6 +134,83 @@ final class SupertextController extends AbstractApiController
         return new JsonResponse(['results' => $results]);
     }
 
+    /** Export for translation: the element's texts as an XLIFF 1.2 or HTML file (nothing is stored). */
+    #[Route('/supertext/elements/{type}/{id}/export', name: 'supertext_translation_export', requirements: ['type' => 'document|data-object', 'id' => '\d+'], methods: ['GET'])]
+    public function export(string $type, int $id, Request $request): Response
+    {
+        $user = $this->user();
+        if (!$user->isAllowed(Settings::PERMISSION)) {
+            return $this->error('You are not allowed to translate with Supertext.', 403, 'not-allowed');
+        }
+        $targets = array_values(array_filter(array_map('trim', explode(',', (string) $request->query->get('targets', '')))));
+        $exchange = new FileExchange(new TranslationFileElements($this->documents, $this->objects, $user), $this->settings->mapping());
+
+        try {
+            $file = $exchange->export(
+                $type === 'document' ? FileExchange::DOCUMENT : FileExchange::OBJECT,
+                $id,
+                (string) $request->query->get('source', ''),
+                $targets,
+                (string) $request->query->get('format', FileExchange::XLIFF),
+                \in_array((string) $request->query->get('overwrite', ''), ['1', 'true'], true),
+            );
+        } catch (SupertextException $e) {
+            return new JsonResponse(['error' => $e->getMessage()] + $e->toArray(), $e->key === 'element-not-found' ? 404 : 400);
+        }
+
+        return new Response($file['content'], 200, [
+            'Content-Type' => $file['contentType'],
+            'Content-Disposition' => 'attachment; filename="' . $file['fileName'] . '"',
+            'Cache-Control' => 'no-store',
+            'X-Content-Type-Options' => 'nosniff',
+        ]);
+    }
+
+    /**
+     * Import translation: one XLIFF or HTML file (multipart field "file", at most 10 MB), read in
+     * memory and written into the documents and objects it was exported from. The header
+     * X-Supertext-Request is required, so another site can't submit a form here.
+     */
+    #[Route('/supertext/import', name: 'supertext_translation_import', methods: ['POST'])]
+    public function import(Request $request): JsonResponse
+    {
+        $user = $this->user();
+        if (!$user->isAllowed(Settings::PERMISSION)) {
+            return $this->error('You are not allowed to translate with Supertext.', 403, 'not-allowed');
+        }
+        if ($request->headers->get('X-Supertext-Request') !== '1') {
+            return $this->error('Missing X-Supertext-Request header.', 400);
+        }
+        $file = $request->files->get('file');
+        if (!$file instanceof UploadedFile || $file->getError() === \UPLOAD_ERR_NO_FILE) {
+            return $this->error('Choose a file to import.', 400, 'file-no-file');
+        }
+        if (\in_array($file->getError(), [\UPLOAD_ERR_INI_SIZE, \UPLOAD_ERR_FORM_SIZE], true) || $file->getSize() > FileExchange::MAX_UPLOAD_BYTES) {
+            return $this->error('The file is too large (at most 10 MB).', 400, 'file-too-large');
+        }
+        if (!$file->isValid()) {
+            return $this->error('The file could not be uploaded.', 400, 'file-invalid-file');
+        }
+        $this->reporting->later(InstallationReports::ON_REQUEST);
+        $exchange = new FileExchange(new TranslationFileElements($this->documents, $this->objects, $user), $this->settings->mapping());
+
+        try {
+            $jobs = $exchange->import(
+                (string) file_get_contents($file->getPathname(), false, null, 0, FileExchange::MAX_UPLOAD_BYTES + 1),
+                $request->request->getBoolean('includeChanged'),
+                $request->request->getBoolean('overwrite'),
+            );
+        } catch (SupertextException $e) {
+            return new JsonResponse(['error' => $e->getMessage()] + $e->toArray(), 400);
+        } catch (\Throwable $e) {
+            $this->logger->error('Supertext translation file import failed: ' . $e->getMessage(), ['exception' => $e]);
+
+            return $this->error($e->getMessage(), 500);
+        }
+
+        return new JsonResponse(['jobs' => array_map(static fn (array $job): array => ['type' => $job['type'] === FileExchange::OBJECT ? 'data-object' : $job['type']] + $job, $jobs)]);
+    }
+
     #[Route('/supertext/settings', name: 'supertext_translation_settings', methods: ['GET'])]
     public function settings(): JsonResponse
     {
@@ -131,30 +219,92 @@ final class SupertextController extends AbstractApiController
             return $this->error('You are not allowed to see the Supertext settings.', 403);
         }
         $this->reporting->later(InstallationReports::ON_REQUEST);
+
+        return new JsonResponse($this->settingsData($user));
+    }
+
+    /**
+     * Saves the language mapping of the *Supertext → Settings* screen: one Supertext code (or none:
+     * the default applies), tone and *Translation review* per Pimcore language, checked against Supertext's targets.
+     */
+    #[Route('/supertext/settings/languages', name: 'supertext_translation_save_languages', methods: ['POST'])]
+    public function saveLanguages(Request $request): JsonResponse
+    {
+        $user = $this->user();
+        if (!$user->isAdmin()) {
+            return $this->error('Only administrators can change the Supertext settings.', 403, 'admin-only');
+        }
+        if ($request->headers->get('X-Supertext-Request') !== '1') {
+            return $this->error('Missing X-Supertext-Request header.', 400);
+        }
+        $payload = json_decode($request->getContent() ?: '[]', true);
+        $input = \is_array($payload) && \is_array($payload['languages'] ?? null) ? $payload['languages'] : null;
+        if ($input === null) {
+            return $this->error('Missing languages.', 400);
+        }
+        try {
+            $languages = LanguageMapping::validate($input, Tool::getValidLanguages());
+        } catch (\InvalidArgumentException $e) {
+            return $this->error($e->getMessage(), 400, 'invalid-mapping');
+        }
+        $this->languageStore->save($languages);
+        $this->reporting->later(InstallationReports::ON_REQUEST);
+
+        return new JsonResponse($this->settingsData($user));
+    }
+
+    /**
+     * What the settings screen shows: status, and per Pimcore language its row of the mapping.
+     *
+     * @return array<string, mixed>
+     */
+    private function settingsData(User $user): array
+    {
+        $mapping = $this->settings->languageMapping();
+        $display = $user->getLanguage() ?: 'en';
         $languages = [];
         foreach (Tool::getValidLanguages() as $language) {
-            $code = $this->settings->languageCodeOrNull($language);
-            $languages[] = [
-                'language' => $language,
-                'name' => \Locale::getDisplayName($language, $user->getLanguage() ?: 'en'),
-                'code' => $code,
-                'politeness' => $this->settings->politeness($language),
-                'politenessSupported' => $code === null ? null : LanguageCodes::supportsPoliteness($code),
+            $row = $mapping->row($language);
+            $languages[] = $row + [
+                'name' => \Locale::getDisplayName($language, $display),
+                'politenessSupported' => $row['code'] === null ? null : LanguageCodes::supportsPoliteness($row['code']),
             ];
         }
+        $targets = array_map(static fn (array $target): array => [
+            'code' => $target['code'],
+            'name' => $target['name'],
+            'localName' => self::displayName($target['code'], $display, $target['name']),
+            'politeness' => $target['politeness'],
+        ], Languages::targetOptions());
 
-        return new JsonResponse([
+        return [
             'version' => Settings::version(),
+            'releaseUrl' => Settings::releaseUrl(Settings::version()),
             'configured' => $this->settings->apiKey() !== '',
             'status' => $this->status(),
             'apiKeySource' => $this->settings->apiKeySource(),
             'apiUrl' => $this->settings->baseUrl(),
             'timeout' => $this->settings->timeout(),
+            // '' = Translation review is off for every language (review_url / SUPERTEXT_REVIEW_URL).
+            'reviewAvailable' => $this->settings->reviewUrl() !== '',
             'languages' => $languages,
+            'targets' => $targets,
             'signupUrl' => Settings::SIGNUP_URL,
             'apiKeyUrl' => Settings::API_KEY_URL,
             'isAdmin' => $user->isAdmin(),
-        ]);
+        ];
+    }
+
+    /** A Supertext code's name in the user's language (PHP intl), else Supertext's English name. */
+    private static function displayName(string $code, string $display, string $fallback): string
+    {
+        // gsw-u-sd-chzh: intl doesn't name the subdivision; keep Supertext's "Swiss German (Zurich)".
+        if (str_contains($code, '-u-')) {
+            return $fallback;
+        }
+        $name = \Locale::getDisplayName(str_replace('-', '_', $code), $display);
+
+        return \is_string($name) && $name !== str_replace('-', '_', $code) ? $name : $fallback;
     }
 
     #[Route('/supertext/settings/test', name: 'supertext_translation_test', methods: ['POST'])]

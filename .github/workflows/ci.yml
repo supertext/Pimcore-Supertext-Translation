@@ -74,7 +74,7 @@ jobs:
         options: >-
           --health-cmd "mysqladmin ping -proot" --health-interval 5s --health-timeout 5s --health-retries 20
       opensearch:
-        image: opensearchproject/opensearch:2.19.6
+        image: opensearchproject/opensearch:2.19.7
         env:
           discovery.type: single-node
           DISABLE_SECURITY_PLUGIN: "true"

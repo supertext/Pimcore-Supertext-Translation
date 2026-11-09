@@ -6,6 +6,7 @@ namespace Supertext\PimcoreTranslationBundle;
 
 use Supertext\PimcoreTranslationBundle\Api\CallableTransport;
 use Supertext\PimcoreTranslationBundle\Api\LanguageCodes;
+use Supertext\PimcoreTranslationBundle\Api\LanguageMapping;
 use Supertext\PimcoreTranslationBundle\Api\SupertextClient;
 use Supertext\PimcoreTranslationBundle\Api\SupertextException;
 use Supertext\PimcoreTranslationBundle\PluginHealth\InstallationReporter;
@@ -15,7 +16,7 @@ use Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 /**
- * Settings (bundle config + SUPERTEXT_API_KEY / SUPERTEXT_API_URL / SUPERTEXT_VERSION_REPORTS) and the API client.
+ * Settings (bundle config + SUPERTEXT_API_KEY / SUPERTEXT_API_URL / SUPERTEXT_REVIEW_URL / SUPERTEXT_VERSION_REPORTS) and the API client.
  */
 final class Settings
 {
@@ -61,6 +62,7 @@ final class Settings
         #[Autowire(param: 'supertext_translation.config')]
         private readonly array $config,
         private readonly HttpClientInterface $httpClient,
+        private readonly ?LanguageStore $languageStore = null,
     ) {
     }
 
@@ -92,32 +94,51 @@ final class Settings
         return SupertextClient::baseUrlFor((string) $this->config['environment'], $url);
     }
 
+    /**
+     * The review service for languages with *Translation review* on: SUPERTEXT_REVIEW_URL if set (non-empty),
+     * else `review_url` (default Supertext's review service); '' = review off for every language.
+     */
+    public function reviewUrl(): string
+    {
+        $env = trim((string) self::env('SUPERTEXT_REVIEW_URL'));
+
+        return $env !== '' ? $env : trim((string) ($this->config['review_url'] ?? SupertextClient::REVIEW_URL));
+    }
+
+    /** Whether translations into a Pimcore language go through the review service. */
+    public function review(string $language): bool
+    {
+        return $this->reviewUrl() !== '' && $this->languageMapping()->review($language);
+    }
+
     public function timeout(): int
     {
         return (int) $this->config['timeout'];
     }
 
     /**
-     * The language mapping: Pimcore language → Supertext code (`languages.<language>.code`, non-blank only).
+     * The language mapping: the *Supertext → Settings* screen (Pimcore's settings store), overridden by the
+     * bundle configuration's `languages.<language>.code` / `.politeness` where they are set.
+     */
+    public function languageMapping(): LanguageMapping
+    {
+        return new LanguageMapping((array) ($this->config['languages'] ?? []), $this->languageStore?->load() ?? []);
+    }
+
+    /**
+     * Pimcore language → Supertext code (the screen's choices and the configuration, non-blank only).
+     * Languages in neither use the SDK's exact match or default.
      *
      * @return array<string, string>
      */
     public function mapping(): array
     {
-        $mapping = [];
-        foreach ((array) $this->config['languages'] as $language => $options) {
-            $code = trim((string) ($options['code'] ?? ''));
-            if ($code !== '') {
-                $mapping[(string) $language] = $code;
-            }
-        }
-
-        return $mapping;
+        return $this->languageMapping()->mapping();
     }
 
     /**
      * Supertext target code for a Pimcore language: the mapping, else the Pimcore code if it is a Supertext
-     * code (de_CH -> de-CH, es). No default regions.
+     * code (de_CH -> de-CH, es), else the SDK's default (de -> de-DE, zh_CN -> zh-Hans).
      *
      * @throws SupertextException key `unsupported-language`
      */
@@ -126,7 +147,7 @@ final class Settings
         return LanguageCodes::target($language, $this->mapping());
     }
 
-    /** The target code, or null while the language isn't mapped. */
+    /** The target code, or null for a language without mapping, exact match or default. */
     public function languageCodeOrNull(string $language): ?string
     {
         return LanguageCodes::targetOrNull($language, $this->mapping());
@@ -142,12 +163,10 @@ final class Settings
         return LanguageCodes::source($language, $this->mapping());
     }
 
-    /** The configured tone: "more", "less" or "" (default). */
+    /** The tone: the configuration's, else the settings screen's; "more", "less" or "" (default). */
     public function politeness(string $language): string
     {
-        $value = (string) ($this->config['languages'][$language]['politeness'] ?? '');
-
-        return \in_array($value, ['more', 'less'], true) ? $value : '';
+        return $this->languageMapping()->politeness($language);
     }
 
     /**
@@ -225,8 +244,18 @@ final class Settings
         return new CallableTransport($this->send());
     }
 
+    /** The API client; `->forReview($this->review($language))` for a translation into $language. */
     public function client(): SupertextClient
     {
-        return new SupertextClient($this->apiKey(), $this->baseUrl(), $this->send(), $this->timeout(), (float) $this->config['poll_interval']);
+        return new SupertextClient(
+            $this->apiKey(),
+            $this->baseUrl(),
+            $this->send(),
+            $this->timeout(),
+            (float) $this->config['poll_interval'],
+            // The bundle's version too (as in the reports), so Supertext and the review service see which release calls.
+            userAgent: SupertextClient::USER_AGENT . '/' . self::version(),
+            reviewUrl: $this->reviewUrl(),
+        );
     }
 }

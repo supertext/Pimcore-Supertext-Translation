@@ -9,6 +9,7 @@ use Pimcore\Model\DataObject\ClassDefinition;
 use Pimcore\Model\Document;
 use Pimcore\Model\User;
 use Pimcore\Tool\Authentication;
+use Supertext\PimcoreTranslationBundle\LanguageStore;
 use Supertext\PimcoreTranslationBundle\Settings;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
@@ -17,8 +18,8 @@ use Symfony\Component\Console\Output\OutputInterface;
 
 /**
  * Supertext demo setup, run on every start. Only adds what is missing: the Editors role, the
- * DEMO_ADMIN / DEMO_EDITOR accounts, the class "Article", the English pages and the sample
- * article object. Existing accounts and content are never changed. Passwords are never printed.
+ * DEMO_ADMIN / DEMO_EDITOR accounts, the class "Article", the English pages, the sample
+ * article object and the Supertext language mapping (Supertext → Settings). Existing accounts and content are never changed. Passwords are never printed.
  */
 #[AsCommand(name: 'supertext:demo-setup', description: 'Creates what the Supertext demo needs if it is missing.')]
 final class DemoSetupCommand extends Command
@@ -33,6 +34,7 @@ final class DemoSetupCommand extends Command
         $this->ensureAccounts($role);
         $this->ensureDocuments();
         $this->ensureObject();
+        $this->ensureLanguageMapping();
 
         return Command::SUCCESS;
     }
@@ -40,6 +42,25 @@ final class DemoSetupCommand extends Command
     private function log(string $message): void
     {
         $this->out->writeln("[demo] {$message}");
+    }
+
+    /**
+     * The mapping on Supertext → Settings, saved once: "en" as British English (Supertext's default for a
+     * bare "en" would be en-US), the Swiss languages formal. Changes made on the screen are kept.
+     */
+    private function ensureLanguageMapping(): void
+    {
+        $store = new LanguageStore();
+        if ($store->load() !== []) {
+            return;
+        }
+        $store->save([
+            'en' => ['code' => 'en-GB', 'politeness' => '', 'review' => false],
+            'de_CH' => ['code' => 'de-CH', 'politeness' => 'more', 'review' => false],
+            'fr_CH' => ['code' => 'fr-CH', 'politeness' => 'more', 'review' => false],
+            'it_CH' => ['code' => 'it-CH', 'politeness' => 'more', 'review' => false],
+        ]);
+        $this->log('Supertext language mapping saved (Supertext → Settings)');
     }
 
     /** The class "Article" with localized name, summary (textarea) and body (WYSIWYG). */

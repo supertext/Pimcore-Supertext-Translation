@@ -15,3 +15,5 @@
 /.phpunit.result.cache
 .env
 !/demo/project/.env
+/tests/docs/movie/out/
+/tests/docs/movie/voice-cache/

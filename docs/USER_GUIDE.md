@@ -31,6 +31,8 @@ The translation contains the translated title, description, navigation name and 
 
 Change what you like, as if you had translated by hand, then **Save & publish**. Until you publish, visitors don't see the translation.
 
+- **Translation review:** if your administrator turned on *Translation review* for a language, reviewers (your colleagues or Supertext linguists) check and correct the translations on the website. Their corrections come into Pimcore the next time you translate the document or object into that language: after a review, translate it again with *Overwrite existing translations*. Texts reviewed once keep their corrected wording in later translations.
+
 ## Translate again or update a translation
 
 Languages that already have a translation of the page show **Already translated**, or **Translated with Supertext on** *date* if Supertext made it, and are not ticked. If you tick one, the dialog shows an extra option:
@@ -59,6 +61,40 @@ The translations are saved as a **new version** of the object (a draft): when yo
 ![The article in German after translating: the draft notice, and Name, Summary and Body in German with the bold word and the list kept](images/object-translation-german.png)
 
 Then **Save & publish**. Languages that already have text are skipped unless you tick them and turn on **Overwrite existing translations**; then all their translatable fields are replaced.
+
+## Export for translation and import the translated file
+
+Instead of translating with Supertext AI right away, you can export the texts as a file, have them translated elsewhere, and import the translated file. Both are in the **Translate with Supertext** dialog, at the top: **Translate with Supertext** · **Export for translation** · **Import translation**.
+
+**Export for translation**
+
+1. Save your changes (the saved version is exported), open the dialog and choose **Export for translation**.
+2. Choose the **File format**:
+   - **XLIFF 1.2 (for translation tools)**: the better choice for translators and translation tools (Trados, memoQ, Phrase, …): formatting appears as protected tags, and one file can hold several target languages.
+   - **HTML (one language per file)**: can be uploaded to Supertext's web app or translated by anyone who works with HTML. Translators must leave the file's head (the `supertext:` lines) and the `data-st-id` attributes alone. An HTML file can't mark a text as untranslated: imported unchanged, it writes the source text into the target language.
+3. Tick the target languages (for data objects, choose the source language first) and click **Download file**. The file is named like `pimcore-document-12-de_CH.xlf` (`pimcore-object-7.xlf` for several languages). It contains the same texts *Translate with Supertext* would send; languages that already have a translation are left out unless you tick **Overwrite existing translations**. *Nothing to translate.* means there are no texts, or every chosen language is already translated.
+4. Send the file to your translator, open it in your translation tool, or upload it at supertext.com.
+
+**Import translation**
+
+1. Open the dialog on any document or object and choose **Import translation**. The file itself says which documents, objects and languages it belongs to.
+2. Choose the file under **Translated file (XLIFF or HTML)**. Options (both off by default):
+   - **Also import texts whose source changed since the export**: a text that was edited in the source language after the export is skipped unless you tick this.
+   - **Overwrite existing translations**: a language that got a translation since the export is kept unless you tick this.
+3. Click **Import translation**. The texts are saved exactly as by *Translate with Supertext*: a new, unpublished translation of a page, or a new version of an existing translation or of the object. Review and publish as usual.
+
+The dialog shows a summary per document or object and language:
+
+| Line | Meaning |
+| --- | --- |
+| Imported: 3 | Saved in the target language. |
+| Skipped, source changed since the export: 1 | The source text was edited after the export. Export again, or import with *Also import texts whose source changed since the export*. |
+| Not translated in the file: 1 | The file has no translation for this text. |
+| Formatting changed, not imported: 1 | The translation breaks or adds formatting (tags) the source doesn't have. Fix it in the file and import again. |
+| Not in the file: 1 | The text isn't in the file, e.g. one added after the export. |
+| Kept, already translated (overwrite is off): 3 | The language already has a translation; tick *Overwrite existing translations* to replace it. |
+
+Errors: *This file isn't a valid XLIFF or HTML translation file.*, *This file wasn't exported by the Supertext bundle, or its header was removed.*, *The file is too large (at most 10 MB).*, *This file belongs to another system (…)* (exported by another Supertext plugin), *The document or data object this file was exported from no longer exists.*, *Pimcore has no language …*, *You are not allowed to edit this translation.*, and the messages of *Translate with Supertext* (e.g. *Translate the parent page into this language first.*). Nothing is saved for an element with an error.
 
 ## What is translated
 
@@ -90,12 +126,16 @@ Every translation is recorded as a note of type *supertext* on the original docu
 | *This document has no text to translate.* / *The object has no … text to translate from.* | The page or the chosen *From* language is empty. |
 | *Authentication failed. Please check the Supertext API key.* | The API key is wrong. Ask your administrator. |
 | *Your Supertext translation limit is exceeded.* | Your organisation's Supertext limit is used up. |
-| *No Supertext language* (next to a language) / *The language … has no Supertext language yet.* | Your administrator hasn't told the bundle which Supertext language to use for it, so it can't be selected. Ask them to map it; the other languages are translated. |
+| *No Supertext language* (next to a language) / *The language … has no Supertext language yet.* | Supertext has no obvious match for this language, so it can't be selected. Ask your administrator to choose its Supertext language under *Supertext → Settings*; the other languages are translated. |
 | *No formal/informal tone* (next to a language) / *Supertext offers no formal or informal tone for this language.* | A formal or informal tone is set for this language, but Supertext doesn't offer one for it (e.g. English). Ask your administrator to remove the tone setting. |
-| *Supertext does not support this language pair (en → …).* | Supertext can't translate into this language, or its Supertext language code is wrong. Tell your administrator to check the language mapping. |
+| *Supertext does not support this language pair (en → …).* | Supertext can't translate into this language, or its Supertext language code is wrong. Tell your administrator to check the language under *Supertext → Settings*. |
 | *Too many requests to Supertext. Please try again shortly.* | Supertext was busy; try again in a moment. |
 | *Timed out waiting for the Supertext translation.* / *The Supertext service is currently unavailable.* | Supertext took too long or is unavailable. Try again later. |
 
 Errors are reported per language: if one language fails, the others are still translated.
 
 Administrators also see a short **Supertext status** at the bottom of the dialog: the latest check of the API key with its time, the languages without a Supertext language, and whether version information is sent to Supertext (see the [installation guide](INSTALLATION.md#version-information-api-key-check-and-ping)).
+
+## Support
+
+Questions, problems or ideas: use the [Supertext support form](https://integrations.supertext.com/en/support?platform=pimcore). Mention the version of Pimcore and of the plugin, what you did and what you expected; an error message helps a lot. You get an answer by email, in your language.

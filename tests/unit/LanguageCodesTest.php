@@ -19,19 +19,24 @@ final class LanguageCodesTest extends TestCase
         self::assertSame('sl', LanguageCodes::target('sl'));
     }
 
-    public function testGuessesNoRegion(): void
+    public function testOnlyTheSdksDefaultsAreGuessed(): void
     {
-        foreach (['de', 'en', 'fr', 'zh', 'es_ES', 'sl_SI', 'zh_CN', 'xx'] as $language) {
+        // Since SDK 0.4.0 a target with an obvious default gets it.
+        foreach (['de' => 'de-DE', 'en' => 'en-US', 'fr' => 'fr-FR', 'zh' => 'zh-Hans', 'es_ES' => 'es', 'sl_SI' => 'sl', 'zh_CN' => 'zh-Hans'] as $language => $code) {
+            self::assertSame($code, LanguageCodes::targetOrNull($language), $language);
+        }
+
+        foreach (['de_LI', 'en_IE', 'fr_BE', 'sr_RS', 'gsw', 'xx'] as $language) {
             self::assertNull(LanguageCodes::targetOrNull($language), $language);
         }
 
         try {
-            LanguageCodes::target('de');
+            LanguageCodes::target('fr_BE');
             self::fail('Expected an exception');
         } catch (SupertextException $e) {
             self::assertSame('unsupported-language', $e->key);
-            self::assertSame(['language' => 'de'], $e->params);
-            self::assertStringStartsWith('The language de has no Supertext language yet.', $e->getMessage());
+            self::assertSame(['language' => 'fr_BE'], $e->params);
+            self::assertStringStartsWith('The language fr_BE has no Supertext language yet.', $e->getMessage());
         }
     }
 
@@ -42,7 +47,7 @@ final class LanguageCodesTest extends TestCase
         self::assertSame('de-CH', LanguageCodes::target('de', $mapping));
         self::assertSame('zh-Hans', LanguageCodes::target('zh-cn', $mapping), 'keys compared ignoring case and _/-');
         self::assertSame('fr-CH', LanguageCodes::target('fr_FR', $mapping));
-        self::assertNull(LanguageCodes::targetOrNull('it', $mapping), 'a blank entry is no mapping');
+        self::assertSame('it-IT', LanguageCodes::targetOrNull('it', $mapping), 'a blank entry is no mapping: the default applies');
         self::assertSame('ab-CD', LanguageCodes::target('ab', ['ab' => 'ab-CD']), 'a code the SDK does not list is sent as it is');
     }
 

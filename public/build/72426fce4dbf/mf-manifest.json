@@ -22,7 +22,7 @@
     "globalName": "supertext_translation_bundle",
     "pluginVersion": "0.13.1",
     "prefetchInterface": false,
-    "publicPath": "/bundles/supertexttranslation/build/09957328aff0/"
+    "publicPath": "/bundles/supertexttranslation/build/72426fce4dbf/"
   },
   "shared": [
     {
@@ -103,7 +103,7 @@
       "assets": {
         "js": {
           "sync": [
-            "static/js/async/__federation_expose_default_export.e1c6a4af.js"
+            "static/js/async/__federation_expose_default_export.79941545.js"
           ],
           "async": []
         },

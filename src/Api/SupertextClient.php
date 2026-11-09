@@ -33,6 +33,16 @@ final class SupertextClient
     public const STAGING = 'https://api.staging.supertext.com/v1/';
     public const TESTING = 'https://api.testing.supertext.com/v1/';
 
+    /**
+     * Supertext's review service (translation proxy of Supertext Localization Review). It speaks the
+     * same API and forwards to the live Supertext API with the same key, keeping every translation so
+     * reviewers can correct them on the website. Used for languages with *Translation review* on.
+     */
+    public const REVIEW_URL = 'https://localizationreview-production.up.railway.app/v1/';
+
+    /** The User-Agent's name; the version follows it (`Pimcore-Supertext-Translation/1.2.0`). */
+    public const USER_AGENT = 'Pimcore-Supertext-Translation';
+
     /** Stay well below the API's 1,000,000 character limit per document. */
     public const MAX_DOCUMENT_CHARACTERS = Protocol::DEFAULT_MAX_CHARACTERS;
 
@@ -44,7 +54,7 @@ final class SupertextClient
         SdkException::MISSING_API_KEY => ['no-api-key', 'No Supertext API key is configured.'],
         SdkException::AUTHENTICATION_FAILURE => ['auth-failed', 'Authentication failed. Please check the Supertext API key.'],
         SdkException::INVALID_LANGUAGE_PAIR => ['invalid-language-pair', 'Supertext does not support this language pair (%s → %s).'],
-        SdkException::UNSUPPORTED_LANGUAGE => ['unsupported-language', 'The language %s has no Supertext language yet. Ask your administrator to map it (supertext_translation.languages.<language>.code).'],
+        SdkException::UNSUPPORTED_LANGUAGE => ['unsupported-language', 'The language %s has no Supertext language yet. Ask your administrator to choose one in Pimcore Studio: Supertext → Settings.'],
         SdkException::UNSUPPORTED_FEATURE => ['unsupported-feature', 'Supertext offers no formal or informal tone for this language. Remove the politeness setting for it (supertext_translation.languages.<language>.politeness).'],
         SdkException::NOT_FOUND => ['not-found', 'The requested Supertext resource was not found.'],
         SdkException::PAYLOAD_TOO_LARGE => ['too-large', 'The content is too large for Supertext to translate in one go.'],
@@ -63,9 +73,16 @@ final class SupertextClient
     private readonly Client $sdk;
     private readonly string $apiKey;
 
+    /** @var (\Closure(): self)|null builds the client for the review service (null: none) */
+    private readonly ?\Closure $makeReviewClient;
+
+    private ?self $reviewClient = null;
+
     /**
      * @param callable(string $method, string $url, array<string, string> $headers, ?string $body): array{status: int, body: string, headers: array<string, string>} $transport
      * @param callable(float $seconds): void|null $sleep tests: the SDK's clock then counts the slept time
+     * @param string $userAgent sent with every request, e.g. "Pimcore-Supertext-Translation/1.2.0"
+     * @param string $reviewUrl the review service for languages with *Translation review* on ('' = none)
      */
     public function __construct(
         string $apiKey,
@@ -74,8 +91,16 @@ final class SupertextClient
         private readonly int $pollTimeout = 180,
         float $pollInterval = 2.0,
         ?callable $sleep = null,
+        string $userAgent = self::USER_AGENT,
+        string $reviewUrl = '',
     ) {
         $this->apiKey = self::normalizeKey($apiKey);
+        $baseUrl = $baseUrl !== '' ? $baseUrl : self::LIVE;
+        $reviewUrl = trim($reviewUrl);
+        // Same key, transport, timeouts and User-Agent; only the base URL differs.
+        $this->makeReviewClient = $reviewUrl === '' || rtrim($reviewUrl, '/') === rtrim($baseUrl, '/')
+            ? null
+            : fn (): self => new self($apiKey, $reviewUrl, $transport, $pollTimeout, $pollInterval, $sleep, $userAgent);
 
         $elapsed = 0.0;
         $sdkSleep = $sleep === null ? null : static function (float $seconds) use ($sleep, &$elapsed): void {
@@ -88,11 +113,11 @@ final class SupertextClient
 
         $this->sdk = new Client(
             $this->apiKey,
-            baseUrl: $baseUrl !== '' ? $baseUrl : self::LIVE,
+            baseUrl: $baseUrl,
             pollInterval: $pollInterval,
             timeout: (float) $pollTimeout,
             requestTimeout: 60.0,
-            userAgent: 'Pimcore-Supertext-Translation',
+            userAgent: $userAgent,
             transport: new CallableTransport($transport),
             sleep: $sdkSleep,
             clock: $clock,
@@ -116,6 +141,20 @@ final class SupertextClient
             'testing' => self::TESTING,
             default   => self::LIVE,
         };
+    }
+
+    /**
+     * The client for a target language: the review service when its *Translation review* is on (same
+     * key, same protocol; created once), else this one. Without a review URL always this one. Each
+     * translation is a full round trip, so a job is always collected by the client that submitted it.
+     */
+    public function forReview(bool $review): self
+    {
+        if (!$review || $this->makeReviewClient === null) {
+            return $this;
+        }
+
+        return $this->reviewClient ??= ($this->makeReviewClient)();
     }
 
     public function hasApiKey(): bool

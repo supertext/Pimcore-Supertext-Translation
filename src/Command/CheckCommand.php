@@ -33,6 +33,7 @@ final class CheckCommand extends Command
         $release = Settings::releaseUrl($version);
         $output->writeln('Supertext Translation for Pimcore ' . $version . ($release ? " ({$release})" : ''));
         $output->writeln('API address: ' . $this->settings->baseUrl());
+        $output->writeln('Review service (Translation review): ' . ($this->settings->reviewUrl() !== '' ? $this->settings->reviewUrl() : 'off (review_url is empty)'));
 
         $output->writeln('Languages (Pimcore → Supertext):');
         $unmapped = 0;
@@ -41,10 +42,11 @@ final class CheckCommand extends Command
             $tone = $this->settings->politeness($language);
             if ($code === null) {
                 ++$unmapped;
-                $output->writeln(sprintf('  %s → <comment>not mapped</comment>: set supertext_translation.languages.%s.code', $language, $language));
+                $output->writeln(sprintf('  %s → <comment>not mapped</comment>: choose its Supertext language in Pimcore Studio, Supertext → Settings (or set supertext_translation.languages.%s.code)', $language, $language));
                 continue;
             }
-            $line = sprintf('  %s → %s', $language, $code) . ($tone !== '' ? " ({$tone})" : '');
+            $line = sprintf('  %s → %s', $language, $code) . ($tone !== '' ? " ({$tone})" : '')
+                . ($this->settings->review($language) ? ', Translation review' : '');
             if ($tone !== '' && LanguageCodes::supportsPoliteness($code) === false) {
                 $line .= ' <comment>Supertext offers no formal/informal tone for this language: remove its politeness</comment>';
             }
@@ -56,7 +58,8 @@ final class CheckCommand extends Command
 
         $result = $this->reporting->run(InstallationReports::REPORT_CHECK);
         // Without a site URL (no request, no domain in Pimcore's system settings) nothing is reported; check the key anyway.
-        $check = $result->check ?? $this->settings->client()->checkApiKey();
+        $check = $result->check ?? KeyCheck::from($this->settings->client()->checkApiKey())
+            ?? new KeyCheck(KeyCheck::ERROR, gmdate('Y-m-d\TH:i:s\Z'));
         $ok = $check->status === KeyCheck::OK;
         $message = InstallationReports::checkMessage($check);
         $output->writeln($ok ? "<info>{$message}</info>" : "<error>{$message}</error>");

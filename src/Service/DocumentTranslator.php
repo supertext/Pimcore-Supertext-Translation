@@ -124,6 +124,49 @@ final class DocumentTranslator
     }
 
     /**
+     * The texts an API translation of the document into $target would send, for a translation
+     * file (Export for translation / Import translation): the latest version's units, and whether
+     * the target is kept (a linked translation exists and $overwrite is off) and writable.
+     *
+     * @return array{source: string, segments: array<string, array{text: string, html: bool}>, kept: bool, editable: bool}
+     */
+    public function fileSegments(PageSnippet $document, string $target, bool $overwrite, User $user): array
+    {
+        $source = $this->language($document);
+        $existing = ($id = $this->translations($document)[$target] ?? null) ? Document::getById($id) : null;
+        $parent = $existing ? null : $this->targetParent($document, $target);
+
+        return [
+            'source' => $source,
+            'segments' => $this->segmentsOf($this->units($this->latest($document, $user))),
+            'kept' => $existing !== null && !$overwrite,
+            // A missing parent translation is reported when writing (parent-missing).
+            'editable' => $existing ? $existing->isAllowed('save', $user) : ($parent === null || $parent->isAllowed('create', $user)),
+        ];
+    }
+
+    /**
+     * Writes translations from a file (key => text, keys of units()) into the linked translation
+     * in $target, exactly like an API translation: a new unpublished translation, or a new version
+     * of the existing one.
+     *
+     * @param array<string, string> $translated
+     *
+     * @return array{language: string, status: string, message: string, documentId: int, path: string, created: bool}
+     */
+    public function writeTranslations(PageSnippet $document, string $target, array $translated, User $user): array
+    {
+        $source = $this->language($document);
+        $document = $this->latest($document, $user);
+        $units = array_intersect_key($this->units($document), $translated);
+        $existing = ($id = $this->translations($document)[$target] ?? null) ? Document::getById($id) : null;
+
+        return $existing instanceof PageSnippet
+            ? $this->update($document, $existing, $units, $source, $target, $user, $translated)
+            : $this->create($document, $units, $source, $target, $user, $translated);
+    }
+
+    /**
      * The texts of a document: key => [text, html, kind, name].
      *
      * @return array<string, array{text: string, html: bool, kind: string, name: string}>
@@ -158,7 +201,8 @@ final class DocumentTranslator
         return $units;
     }
 
-    private function create(PageSnippet $document, array $units, string $source, string $target, User $user): array
+    /** @param array<string, string>|null $translated null: translate with Supertext */
+    private function create(PageSnippet $document, array $units, string $source, string $target, User $user, ?array $translated = null): array
     {
         $parent = $this->targetParent($document, $target);
         if (!$parent) {
@@ -167,7 +211,7 @@ final class DocumentTranslator
         if (!$parent->isAllowed('create', $user)) {
             throw new SupertextException('You are not allowed to create documents there.', key: 'create-not-allowed');
         }
-        $translated = $this->segments->translate($this->segmentsOf($units), $source, $target);
+        $translated ??= $this->segments->translate($this->segmentsOf($units), $source, $target);
 
         $service = new Document\Service($user);
         /** @var PageSnippet $copy */
@@ -187,12 +231,13 @@ final class DocumentTranslator
         return ['language' => $target, 'status' => 'translated', 'message' => '', 'documentId' => $copy->getId(), 'path' => $copy->getRealFullPath(), 'created' => true];
     }
 
-    private function update(PageSnippet $document, PageSnippet $existing, array $units, string $source, string $target, User $user): array
+    /** @param array<string, string>|null $translated null: translate with Supertext */
+    private function update(PageSnippet $document, PageSnippet $existing, array $units, string $source, string $target, User $user, ?array $translated = null): array
     {
         if (!$existing->isAllowed('save', $user)) {
             throw new SupertextException('You are not allowed to edit the translation.', key: 'edit-not-allowed');
         }
-        $translated = $this->segments->translate($this->segmentsOf($units), $source, $target);
+        $translated ??= $this->segments->translate($this->segmentsOf($units), $source, $target);
         $existing = $this->latest($existing, $user);
         $this->apply($existing, $units, $translated, $document);
         $existing->setUserModification($user->getId());

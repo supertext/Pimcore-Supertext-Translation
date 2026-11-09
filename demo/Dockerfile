@@ -4,7 +4,7 @@
 # MySQL/MariaDB and OpenSearch are separate services (see demo/.env.example).
 FROM public.ecr.aws/docker/library/php:8.4-apache
 
-ADD --chmod=0755 https://github.com/mlocati/docker-php-extension-installer/releases/download/2.12.0/install-php-extensions /usr/local/bin/
+ADD --chmod=0755 https://github.com/mlocati/docker-php-extension-installer/releases/download/2.13.2/install-php-extensions /usr/local/bin/
 RUN install-php-extensions pdo_mysql mysqli intl gd zip bcmath exif opcache imagick \
  && apt-get update && apt-get install -y --no-install-recommends unzip \
  && rm -rf /var/lib/apt/lists/* \

@@ -12,12 +12,14 @@ use Supertext\PimcoreTranslationBundle\Sdk\V1\Languages;
 use Supertext\PimcoreTranslationBundle\Sdk\V1\SupertextException as SdkException;
 
 /**
- * Pimcore languages → Supertext language codes, without guessing (the SDK's `Languages`, the same
- * rules in every Supertext plugin):
+ * Pimcore languages → Supertext language codes, defaults only where obvious (the SDK's `Languages`,
+ * the same rules in every Supertext plugin):
  *
- * 1. the language mapping (`supertext_translation.languages.<language>.code`), if set;
+ * 1. the language mapping (Supertext → Settings in Studio, `supertext_translation.languages.<language>.code`
+ *    overriding it; see LanguageMapping), if set;
  * 2. else a Pimcore code that equals a Supertext code apart from case and `_`/`-` (`de_CH` → `de-CH`, `es`);
- * 3. else `unsupported-language`, and nothing is sent.
+ * 3. else the SDK's default (`de` → `de-DE`, `en` → `en-US`, `zh_CN` → `zh-Hans`, `es_ES` → `es`);
+ * 4. else `unsupported-language`, and nothing is sent (`de_LI`, `en_IE`, `fr_BE` need a mapping).
  *
  * Supertext accepts only the codes its `features` list names: regional targets for de/en/fr/it/pt
  * (`de-CH`, `en-US`, `pt-BR`), `zh-Hans`/`zh-Hant`, `sr-Latn`/`sr-Cyrl`, `gsw-u-sd-chzh`/`chbe`, bare

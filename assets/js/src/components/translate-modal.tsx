@@ -1,8 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { Alert, Button, Checkbox, Modal, Select, Space, Spin, Tag, Text } from '@pimcore/studio-ui-bundle/components'
+import { Alert, Button, Checkbox, Modal, Segmented, Select, Space, Spin, Tag, Text } from '@pimcore/studio-ui-bundle/components'
 import { useTranslation } from '@pimcore/studio-ui-bundle/app'
 import { useElementHelper, useElementRefresh } from '@pimcore/studio-ui-bundle/modules/element'
 import { type ElementInfo, type ElementKind, type KeyCheck, type LanguageState, type ServerMessage, type TranslationResult, loadElement, translateElement } from '../api'
+import { ExportPanel, ImportPanel } from './translation-files'
+
+type Mode = 'translate' | 'export' | 'import'
 
 interface Props {
   type: ElementKind
@@ -37,6 +40,8 @@ export const TranslateModal = ({ type, id, onClose }: Props): React.JSX.Element 
   // The editor is reloaded when the dialog closes: reloading it earlier would close the dialog
   // (it lives in the editor's toolbar) before the results are shown.
   const [changed, setChanged] = useState(false)
+  // Translate with Supertext, Export for translation or Import translation.
+  const [mode, setMode] = useState<Mode>('translate')
 
   /** The server's message in the user's language (English if its key has no translation). */
   const describe = (m: ServerMessage): string => {
@@ -139,10 +144,30 @@ export const TranslateModal = ({ type, id, onClose }: Props): React.JSX.Element 
     return null
   }
 
+  /** The source language: fixed for documents (their own language), chosen for data objects. */
+  const fromBlock = (): React.JSX.Element => (
+    <div>
+      <Text strong>{ t('supertext.from') }</Text>
+      <div>
+        { type === 'document'
+          ? <Text>{ names[source] ?? source } <Text type="secondary">({ source })</Text></Text>
+          : (
+            <Select
+              className="supertext-source"
+              onChange={ onSourceChange }
+              options={ languages.filter(l => l.hasContent === true).map(l => ({ value: l.language, label: `${l.name} (${l.language})` })) }
+              style={ { minWidth: 240 } }
+              value={ source }
+            />
+            ) }
+      </div>
+    </div>
+  )
+
   return (
     <Modal
       className="supertext-modal"
-      footer={ results !== null
+      footer={ results !== null || mode !== 'translate'
         ? <Button onClick={ close }>{ t('supertext.close') }</Button>
         : (
           <Space>
@@ -181,6 +206,31 @@ export const TranslateModal = ({ type, id, onClose }: Props): React.JSX.Element 
         />
       ) }
 
+      { info !== null && results === null && (
+        <Segmented
+          className="supertext-mode"
+          onChange={ (value) => { setMode(value as Mode) } }
+          options={ [
+            { value: 'translate', label: t('supertext.mode.translate') },
+            { value: 'export', label: t('supertext.mode.export') },
+            { value: 'import', label: t('supertext.mode.import') }
+          ] }
+          style={ { marginBottom: 16 } }
+          value={ mode }
+        />
+      ) }
+
+      { info !== null && results === null && mode === 'export' && (
+        <Space direction="vertical" size="normal" style={ { width: '100%' } }>
+          { fromBlock() }
+          <ExportPanel describe={ describe } exists={ l => exists(type, l) } id={ id } key={ source } languages={ languages } source={ source } type={ type } />
+        </Space>
+      ) }
+
+      { info !== null && results === null && mode === 'import' && (
+        <ImportPanel describe={ describe } names={ names } onImported={ () => { setChanged(true) } } />
+      ) }
+
       { results !== null && (
         <Space className="supertext-results" direction="vertical" style={ { width: '100%', marginBottom: 12 } }>
           { results.map(r => (
@@ -202,24 +252,9 @@ export const TranslateModal = ({ type, id, onClose }: Props): React.JSX.Element 
         </Space>
       ) }
 
-      { info !== null && results === null && (
+      { info !== null && results === null && mode === 'translate' && (
         <Space direction="vertical" size="normal" style={ { width: '100%' } }>
-          <div>
-            <Text strong>{ t('supertext.from') }</Text>
-            <div>
-              { type === 'document'
-                ? <Text>{ names[source] ?? source } <Text type="secondary">({ source })</Text></Text>
-                : (
-                  <Select
-                    className="supertext-source"
-                    onChange={ onSourceChange }
-                    options={ languages.filter(l => l.hasContent === true).map(l => ({ value: l.language, label: `${l.name} (${l.language})` })) }
-                    style={ { minWidth: 240 } }
-                    value={ source }
-                  />
-                  ) }
-            </div>
-          </div>
+          { fromBlock() }
           <div>
             <Text strong>{ t('supertext.into') }</Text>
             <div className="supertext-targets">
