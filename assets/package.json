@@ -9,7 +9,7 @@
     "check-types": "tsc --noEmit"
   },
   "dependencies": {
-    "@pimcore/studio-ui-bundle": "~2026.3.4",
+    "@pimcore/studio-ui-bundle": "~2026.3.6",
     "react": "18.3.x",
     "react-dom": "18.3.x"
   },
