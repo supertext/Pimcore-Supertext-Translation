@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { Alert, Button, Checkbox, Content, Header, Select, Space, Text } from '@pimcore/studio-ui-bundle/components'
 import { useTranslation } from '@pimcore/studio-ui-bundle/app'
-import { type LanguageRow, type ServerMessage, type SettingsInfo, loadSettings, saveLanguages } from '../api'
+import { type LanguageRow, type ServerMessage, type SettingsInfo, loadSettings, saveLanguages, sendConfiguration } from '../api'
 
 interface Choice { code: string, politeness: string, review: boolean }
 
@@ -31,6 +31,7 @@ export const SettingsPage = (): React.JSX.Element => {
   const [error, setError] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
   const [busy, setBusy] = useState(false)
+  const [configResult, setConfigResult] = useState<{ ok: boolean, text: string } | null>(null)
 
   const describe = (m: ServerMessage): string => {
     const id = `supertext.error.${m.key ?? ''}`
@@ -82,6 +83,19 @@ export const SettingsPage = (): React.JSX.Element => {
       setSaved(true)
     } catch (e) {
       setError(describe(e as ServerMessage))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const sendConfig = async (): Promise<void> => {
+    setBusy(true)
+    setConfigResult(null)
+    try {
+      const result = await sendConfiguration()
+      setConfigResult({ ok: result.ok, text: describe(result) })
+    } catch (e) {
+      setConfigResult({ ok: false, text: describe(e as ServerMessage) })
     } finally {
       setBusy(false)
     }
@@ -192,6 +206,17 @@ export const SettingsPage = (): React.JSX.Element => {
         { editable && (
           <div>
             <Button loading={ busy } onClick={ () => { void save() } } type="primary">{ t('supertext.settings.save') }</Button>
+          </div>
+        ) }
+
+        { editable && (
+          <div className="supertext-settings-config">
+            <Header position="content" title={ t('supertext.settings.support') } />
+            <div><Text type="secondary">{ t('supertext.settings.send-config-help') }</Text></div>
+            <Space direction="vertical" size="small" style={ { marginTop: 8 } }>
+              <Button disabled={ busy } onClick={ () => { void sendConfig() } }>{ t('supertext.settings.send-config') }</Button>
+              { configResult !== null && <Alert message={ configResult.text } showIcon type={ configResult.ok ? 'success' : 'error' } /> }
+            </Space>
           </div>
         ) }
       </Space>

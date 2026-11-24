@@ -91,7 +91,8 @@ final class InstallationReports
         return InstallationReporter::pingResponse(\is_string($challenge) ? $challenge : null, self::PLUGIN_NAME, $this->enabled);
     }
 
-    public function reporter(string $siteUrl): InstallationReporter
+    /** @param (callable(): list<array{code: string, supertext: ?string}>)|null $languages the language mapping (sendConfiguration only) */
+    public function reporter(string $siteUrl, ?callable $languages = null): InstallationReporter
     {
         return new InstallationReporter(
             enabled: $this->enabled,
@@ -115,7 +116,33 @@ final class InstallationReports
             reportUrl: $this->reportUrl,
             transport: $this->transport === null ? null : new ReportTransport($this->transport),
             now: $this->now,
+            languages: $languages,
         );
+    }
+
+    /**
+     * "Send configuration to Supertext": one `extensions` report with the installed bundles and the
+     * language mapping, sent now (also within the hour after a failed report). Nothing with reports
+     * off or without a site URL. Never throws.
+     *
+     * @param list<array{name: string, version?: ?string, active?: ?bool, type?: ?string}> $extensions
+     * @param list<array{code: string, supertext: ?string}>                                $languages
+     */
+    public function sendConfiguration(?string $siteUrl, array $extensions, array $languages): ?ReporterResult
+    {
+        if ($siteUrl === null || !preg_match('#^https?://[^/]#i', $siteUrl)) {
+            return null;
+        }
+        try {
+            $result = $this->reporter($siteUrl, static fn (): array => $languages)->sendExtensions($this->state(), $extensions);
+            ($this->saveState)((string) json_encode($result->state, JSON_UNESCAPED_SLASHES));
+
+            return $result;
+        } catch (\Throwable $e) {
+            ($this->log)('[supertext] configuration not sent: ' . $e->getMessage());
+
+            return null;
+        }
     }
 
     /**

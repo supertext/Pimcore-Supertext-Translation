@@ -13,7 +13,9 @@ use Supertext\PimcoreTranslationBundle\PluginHealth\KeyCheck;
 use Supertext\PimcoreTranslationBundle\PluginHealth\PingResponse;
 use Supertext\PimcoreTranslationBundle\PluginHealth\ReporterResult;
 use Supertext\PimcoreTranslationBundle\Settings;
+use Supertext\PimcoreTranslationBundle\Api\InstalledExtensions;
 use Symfony\Component\Console\ConsoleEvents;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\RequestStack;
@@ -46,6 +48,9 @@ final class Reporting implements EventSubscriberInterface
         private readonly Settings $settings,
         private readonly RequestStack $requests,
         private readonly LoggerInterface $logger,
+        /** @var array<string, string> kernel.bundles */
+        #[Autowire('%kernel.bundles%')]
+        private readonly array $bundles = [],
     ) {
     }
 
@@ -94,6 +99,28 @@ final class Reporting implements EventSubscriberInterface
 
             return null;
         }
+    }
+
+    /**
+     * "Send configuration to Supertext" (Supertext → Settings, administrators): the installed bundles
+     * (not Pimcore's own) and every Pimcore language with its Supertext code, in one report.
+     *
+     * @return array{sent: bool, extensions: int, languages: int}|null null with reports off
+     */
+    public function sendConfiguration(?Request $request = null): ?array
+    {
+        if (!$this->settings->versionReports()) {
+            return null;
+        }
+        $extensions = InstalledExtensions::from($this->bundles);
+        $mapping = $this->settings->languageMapping();
+        $languages = [];
+        foreach (Tool::getValidLanguages() as $language) {
+            $languages[] = ['code' => (string) $language, 'supertext' => $mapping->row((string) $language)['code']];
+        }
+        $result = $this->core()->sendConfiguration($this->siteUrl($request), $extensions, $languages);
+
+        return ['sent' => (bool) $result?->sent, 'extensions' => \count($extensions), 'languages' => \count($languages)];
     }
 
     public function onTerminate(object $event): void

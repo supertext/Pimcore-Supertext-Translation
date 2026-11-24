@@ -1,0 +1,37 @@
+{
+  "allFiles": [
+    "/bundles/supertexttranslation/build/7eea6365702b/static/js/main.a5551ff1.js",
+    "/bundles/supertexttranslation/build/7eea6365702b/static/js/remoteEntry.js",
+    "/bundles/supertexttranslation/build/7eea6365702b/static/js/async/__federation_expose_default_export.2a5f3457.js",
+    "/bundles/supertexttranslation/build/7eea6365702b/static/js/237.30497fec.js",
+    "/bundles/supertexttranslation/build/7eea6365702b/mf-stats.json",
+    "/bundles/supertexttranslation/build/7eea6365702b/mf-manifest.json",
+    "/bundles/supertexttranslation/build/7eea6365702b/main.html"
+  ],
+  "entries": {
+    "main": {
+      "html": [
+        "/bundles/supertexttranslation/build/7eea6365702b/main.html"
+      ],
+      "initial": {
+        "js": [
+          "/bundles/supertexttranslation/build/7eea6365702b/static/js/237.30497fec.js",
+          "/bundles/supertexttranslation/build/7eea6365702b/static/js/main.a5551ff1.js"
+        ]
+      }
+    },
+    "supertext_translation_bundle": {
+      "initial": {
+        "js": [
+          "/bundles/supertexttranslation/build/7eea6365702b/static/js/remoteEntry.js"
+        ]
+      },
+      "async": {
+        "js": [
+          "/bundles/supertexttranslation/build/7eea6365702b/static/js/async/__federation_expose_default_export.2a5f3457.js"
+        ]
+      }
+    }
+  },
+  "integrity": {}
+}

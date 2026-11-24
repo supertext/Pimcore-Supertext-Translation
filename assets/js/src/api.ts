@@ -212,6 +212,13 @@ export interface SettingsInfo {
 
 export const loadSettings = async (): Promise<SettingsInfo> => await call<SettingsInfo>('/settings')
 
+/** "Send configuration to Supertext" (administrators): installed bundles and the language mapping in one report. */
+export const sendConfiguration = async (): Promise<ServerMessage & { ok: boolean }> =>
+  await call<ServerMessage & { ok: boolean }>('/settings/configuration', {
+    method: 'POST',
+    headers: { Accept: 'application/json', 'X-Supertext-Request': '1' }
+  })
+
 export const saveLanguages = async (languages: Record<string, { code: string, politeness: string, review: boolean }>): Promise<SettingsInfo> =>
   await call<SettingsInfo>('/settings/languages', {
     method: 'POST',

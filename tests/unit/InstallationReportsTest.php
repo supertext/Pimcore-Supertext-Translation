@@ -4,6 +4,7 @@ namespace Supertext\PimcoreTranslationBundle\Tests\Unit;
 
 use PHPUnit\Framework\TestCase;
 use Supertext\PimcoreTranslationBundle\Api\InstallationReports;
+use Supertext\PimcoreTranslationBundle\Api\InstalledExtensions;
 use Supertext\PimcoreTranslationBundle\PluginHealth\KeyCheck;
 use Supertext\PimcoreTranslationBundle\Sdk\Http\HttpRequest;
 use Supertext\PimcoreTranslationBundle\Sdk\Http\HttpResponse;
@@ -112,7 +113,52 @@ final class InstallationReportsTest extends TestCase
         $result = $this->reports()->run(InstallationReports::ON_REQUEST, 'key', self::SITE);
         self::assertNull($result?->event);
         self::assertSame([], $this->requests);
-        self::assertSame($before, $this->stored, 'stored in the same format');
+        // Plugin Health 0.2+ adds keyChecks and reportedKeyStatuses (null with one key); everything else is kept.
+        self::assertSame(json_decode($before, true) + ['keyChecks' => null, 'reportedKeyStatuses' => null], json_decode((string) $this->stored, true), 'stored in the same format');
+    }
+
+    public function testSendConfigurationSendsBundlesAndTheLanguageMappingNow(): void
+    {
+        $bundles   = [['name' => 'acme/pimcore-connector', 'version' => '3.0.1', 'active' => true, 'type' => 'bundle']];
+        $languages = [['code' => 'en', 'supertext' => 'en-US'], ['code' => 'de_CH', 'supertext' => 'de-CH'], ['code' => 'fr_BE', 'supertext' => null]];
+
+        // Within the hour after a failed report: still sent, the administrator asked for it.
+        $this->centerStatus = 503;
+        $reports = $this->reports();
+        $reports->run(InstallationReports::ON_REQUEST, 'key', self::SITE);
+        $this->centerStatus = 202;
+        $this->requests = [];
+
+        $result = $reports->sendConfiguration(self::SITE, $bundles, $languages);
+        self::assertSame('extensions', $result?->event);
+        self::assertTrue($result->sent);
+        [$report] = $this->reportsSent();
+        self::assertSame('extensions', $report['event']);
+        self::assertSame($bundles, $report['extensions']);
+        self::assertSame($languages, $report['languages']);
+
+        self::assertNull($reports->sendConfiguration(null, $bundles, $languages), 'no site URL: nothing');
+    }
+
+    public function testSendConfigurationSendsNothingWithReportsOff(): void
+    {
+        self::assertFalse((bool) $this->reports(false)->sendConfiguration(self::SITE, [['name' => 'acme/x']], [['code' => 'de', 'supertext' => 'de-DE']])?->sent);
+        self::assertSame([], $this->reportsSent());
+    }
+
+    public function testInstalledExtensionsLeaveOutPimcoreAndTheFramework(): void
+    {
+        $bundles = [
+            'FrameworkBundle' => 'Symfony\\Bundle\\FrameworkBundle\\FrameworkBundle',
+            'PimcoreCoreBundle' => 'Pimcore\\Bundle\\CoreBundle\\PimcoreCoreBundle',
+            'SupertextTranslationBundle' => 'Supertext\\PimcoreTranslationBundle\\SupertextTranslationBundle',
+        ];
+        $packages = ['Supertext\\PimcoreTranslationBundle\\SupertextTranslationBundle' => ['name' => 'supertext/pimcore-supertext-translation', 'version' => '1.1.0']];
+
+        self::assertSame(
+            [['name' => 'supertext/pimcore-supertext-translation', 'version' => '1.1.0', 'active' => true, 'type' => 'bundle']],
+            InstalledExtensions::from($bundles, static fn (string $class): ?array => $packages[$class] ?? null),
+        );
     }
 
     public function testLaterRequestsSendNothingUntilSomethingChanges(): void

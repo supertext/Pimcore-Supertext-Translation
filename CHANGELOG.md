@@ -4,6 +4,9 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## Unreleased
 
+- Added: **Send configuration to Supertext** on *Supertext → Settings* (administrators): sends Supertext the installed bundles (name, version) and the Supertext language of each Pimcore language, so Supertext support can help better. Nothing is sent while version information is off. All four interface languages. Supertext Plugin Health 0.4.0.
+- Changed: the screenshots in the guides show real Supertext translations (the E2E workflow takes them with the live API; version reports still go to the stand-in).
+
 ## 1.0.0 — 2026-11-10
 
 First stable release. Every plugin release is now tested end to end against the live Supertext API (`.github/workflows/e2e.yml`).

@@ -41,6 +41,7 @@ use Symfony\Component\Serializer\SerializerInterface;
  *   GET  /supertext/settings                         API key status and check, version reports, API address, languages and Supertext's targets
  *   POST /supertext/settings/languages               {languages: {<language>: {code, politeness, review}}} the language mapping (admins)
  *   POST /supertext/settings/test                    checks the API key, cost-free (admins)
+ *   POST /supertext/settings/configuration           Send configuration to Supertext: bundles and language mapping (admins)
  *
  * {type} is "document" or "data-object". Every endpoint queues the Commando Center's onRequest for
  * after the response (src/Reporting/Reporting.php); the ping route is public, in src/Ping/.
@@ -323,6 +324,25 @@ final class SupertextController extends AbstractApiController
             'check' => InstallationReports::checkToArray($check),
             'message' => InstallationReports::checkMessage($check),
         ]);
+    }
+
+    /** "Send configuration to Supertext": the installed bundles and the language mapping, in one report. */
+    #[Route('/supertext/settings/configuration', name: 'supertext_translation_send_configuration', methods: ['POST'])]
+    public function sendConfiguration(Request $request): JsonResponse
+    {
+        if (!$this->user()->isAdmin()) {
+            return $this->error('Only administrators can send the configuration.', 403, 'admin-only');
+        }
+        if ($request->headers->get('X-Supertext-Request') !== '1') {
+            return $this->error('Missing X-Supertext-Request header.', 400);
+        }
+        $result = $this->reporting->sendConfiguration($request);
+
+        return match (true) {
+            $result === null => new JsonResponse(['ok' => false, 'key' => 'config-off', 'message' => 'Turn on version information (version_reports) to send the configuration.']),
+            $result['sent'] => new JsonResponse(['ok' => true, 'key' => 'config-sent', 'params' => ['extensions' => $result['extensions'], 'languages' => $result['languages']], 'message' => sprintf('Sent: %d extensions, %d languages.', $result['extensions'], $result['languages'])]),
+            default => new JsonResponse(['ok' => false, 'key' => 'config-failed', 'message' => "The configuration couldn't be sent. Try again later."]),
+        };
     }
 
     /**
