@@ -57,7 +57,7 @@ jobs:
           --health-cmd="mysqladmin ping -proot"
           --health-interval=5s --health-timeout=5s --health-retries=20
       opensearch:
-        image: opensearchproject/opensearch:2.19.7
+        image: opensearchproject/opensearch:2.19.8
         env:
           discovery.type: single-node
           DISABLE_SECURITY_PLUGIN: 'true'
@@ -90,7 +90,7 @@ jobs:
 
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: '22'
+          node-version: '26'
           package-manager-cache: false
 
       # --- 1. Real Supertext API (the language list needs no Pimcore) ----------------------

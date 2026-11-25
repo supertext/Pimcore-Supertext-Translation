@@ -5,6 +5,8 @@ All notable changes to this project are documented here. The format follows [Kee
 ## Unreleased
 
 - Added: **Send configuration to Supertext** on *Supertext → Settings* (administrators): sends Supertext the installed bundles (name, version) and the Supertext language of each Pimcore language, so Supertext support can help better. Nothing is sent while version information is off. All four interface languages. Supertext Plugin Health 0.4.0.
+- Removed: support for Pimcore 2026.1 and 2026.2 (end of life since 29 June and 29 September 2026, when the next platform version came out; Pimcore's community support ends with the next release): the bundle now requires Pimcore 2026.3.
+- Changed: the Studio plugin is built against Pimcore Studio 2026.3.7 (was 2026.3.6); `i18next`, which Studio's package pulls in at a vulnerable version for the build only, is overridden to 26.3.4 or later (`npm audit` is clean again).
 - Changed: the screenshots in the guides show real Supertext translations (the E2E workflow takes them with the live API; version reports still go to the stand-in).
 
 ## 1.0.0 — 2026-11-10
