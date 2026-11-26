@@ -4,6 +4,8 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## Unreleased
 
+## 1.1.0 — 2026-11-26
+
 - Added: Indonesian, Romanian, Thai and Vietnamese (`id`, `ro`, `th`, `vi`) can be chosen as Supertext languages, all with formal and informal address (Supertext SDK 0.7.0).
 - Added: **Send configuration to Supertext** on *Supertext → Settings* (administrators): sends Supertext the installed bundles (name, version) and the Supertext language of each Pimcore language, so Supertext support can help better. Nothing is sent while version information is off. All four interface languages. Supertext Plugin Health 0.4.0.
 - Removed: support for Pimcore 2026.1 and 2026.2 (end of life since 29 June and 29 September 2026, when the next platform version came out; Pimcore's community support ends with the next release): the bundle now requires Pimcore 2026.3.
