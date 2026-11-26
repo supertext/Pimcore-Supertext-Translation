@@ -126,10 +126,10 @@ Supertext accepts exactly these target codes (from its `features` list, October 
 | German, English, French, Italian, Portuguese | `de-DE`, `de-CH`, `de-AT`, `en-US`, `en-GB`, `fr-FR`, `fr-CH`, `it-IT`, `it-CH`, `pt-PT`, `pt-BR` |
 | Chinese, Serbian | `zh-Hans`, `zh-Hant`, `sr-Latn`, `sr-Cyrl` |
 | Swiss German | `gsw-u-sd-chzh` (Zurich), `gsw-u-sd-chbe` (Bern) |
-| All others, without region | `bg`, `cs`, `da`, `el`, `es`, `fi`, `hr`, `hu`, `ja`, `ko`, `nb`, `nl`, `pl`, `rm`, `ru`, `sk`, `sl`, `sq`, `sv`, `tr` |
+| All others, without region | `bg`, `cs`, `da`, `el`, `es`, `fi`, `hr`, `hu`, `id`, `ja`, `ko`, `nb`, `nl`, `pl`, `rm`, `ro`, `ru`, `sk`, `sl`, `sq`, `sv`, `th`, `tr`, `vi` |
 
 - Nothing else is guessed: `de_LI`, `en_IE`, `fr_BE`, `no` need a choice (e.g. `de-CH`, `en-GB`, `fr-FR`, `nb`).
-- The **source language** is sent without region, from the same mapping (`en` mapped to `en-GB` is sent as `en`; `en_GB` → `en`). The 28 source languages are the languages above without region, plus `gsw` (Swiss German).
+- The **source language** is sent without region, from the same mapping (`en` mapped to `en-GB` is sent as `en`; `en_GB` → `en`). The 32 source languages are the languages above without region, plus `gsw` (Swiss German).
 - A code set in the bundle configuration is sent as it is, even one this list doesn't have yet (a language Supertext adds later works right away; the screen only offers the listed ones).
 - Formal/informal (`politeness`) isn't offered for English, Swiss German, Romansh, Albanian and Serbian: the screen shows *Not offered for this language* there. A tone set for one of them in the bundle configuration is not dropped silently: the dialog marks the language *No formal/informal tone*, and translating into it fails with *Supertext offers no formal or informal tone for this language* until you remove the tone.
 
