@@ -2,7 +2,7 @@
 #   docker build -f demo/Dockerfile -t supertext-pimcore-demo .
 # One container runs Apache (Pimcore + Studio), the Messenger worker and a Mercure hub.
 # MySQL/MariaDB and OpenSearch are separate services (see demo/.env.example).
-FROM public.ecr.aws/docker/library/php:8.4-apache
+FROM public.ecr.aws/docker/library/php:8.4-apache@sha256:95c1a1dfaaffef4bcfee563838c50620457a3c00196c4bf5ddb66934d707fea2
 
 ADD --chmod=0755 https://github.com/mlocati/docker-php-extension-installer/releases/download/2.13.4/install-php-extensions /usr/local/bin/
 RUN install-php-extensions pdo_mysql mysqli intl gd zip bcmath exif opcache imagick \
