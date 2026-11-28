@@ -95,6 +95,11 @@ final class SupertextController extends AbstractApiController
     #[Route('/supertext/elements/{type}/{id}/translate', name: 'supertext_translation_translate', requirements: ['type' => 'document|data-object', 'id' => '\d+'], methods: ['POST'])]
     public function translate(string $type, int $id, Request $request): JsonResponse
     {
+        // Only JSON requests: a form on another site can't send Content-Type application/json, so it
+        // can't start a translation in a signed-in user's browser (the dialog and the E2E test send it).
+        if ($request->getContentTypeFormat() !== 'json') {
+            return $this->error('Send the request as JSON.', 415);
+        }
         $user = $this->user();
         if (!$user->isAllowed(Settings::PERMISSION)) {
             return $this->error('You are not allowed to translate with Supertext.', 403, 'not-allowed');

@@ -52,7 +52,7 @@ final class ObjectTranslator
     {
         $object = $this->latest($object, $user);
         $fields = $this->fields($object);
-        $editable = DataObjectService::getLanguagePermissions($object, $user, 'lEdit');
+        $editable = $this->editableLanguages($object, $user);
         $last = $this->history->lastTranslations($object);
         $out = [];
         foreach (Tool::getValidLanguages() as $language) {
@@ -97,7 +97,7 @@ final class ObjectTranslator
             }
         }
 
-        $editable = DataObjectService::getLanguagePermissions($object, $user, 'lEdit');
+        $editable = $this->editableLanguages($object, $user);
         $results = [];
         $changed = [];
         foreach (array_unique($targets) as $target) {
@@ -158,7 +158,7 @@ final class ObjectTranslator
                 $segments[$name] = ['text' => $value, 'html' => $html];
             }
         }
-        $editable = DataObjectService::getLanguagePermissions($object, $user, 'lEdit');
+        $editable = $this->editableLanguages($object, $user);
 
         return [
             'source' => $source,
@@ -177,7 +177,7 @@ final class ObjectTranslator
     public function writeTranslations(Concrete $object, string $source, string $target, array $translated, User $user): void
     {
         $object = $this->latest($object, $user);
-        $editable = DataObjectService::getLanguagePermissions($object, $user, 'lEdit');
+        $editable = $this->editableLanguages($object, $user);
         if ($editable !== null && !isset($editable[$target])) {
             throw new SupertextException('You are not allowed to edit this language.', key: 'language-not-allowed');
         }
@@ -190,6 +190,22 @@ final class ObjectTranslator
         $object->setUserModification($user->getId());
         $object->saveVersion(true, true, sprintf('Translation file imported (Supertext): %s → %s', $source, $target));
         $this->history->record($object, $source, $target, $user->getId());
+    }
+
+    /**
+     * The languages $user may write: null = every language (Pimcore's `lEdit` workspaces don't
+     * restrict them), else the allowed ones as keys. Without the object's `save` permission none:
+     * translations are saved as a new version, which Pimcore's own editor also only allows with it.
+     *
+     * @return array<string, mixed>|null
+     */
+    private function editableLanguages(Concrete $object, User $user): ?array
+    {
+        if (!$object->isAllowed('save', $user)) {
+            return [];
+        }
+
+        return DataObjectService::getLanguagePermissions($object, $user, 'lEdit');
     }
 
     /** True if any translatable field has text in the language (fallback values ignored). */

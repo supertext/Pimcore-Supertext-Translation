@@ -161,7 +161,7 @@ In **System → User & Roles**, give editors' roles (or users):
 
 ![The role "Editors" in Pimcore Studio: the permissions Documents, Objects, Notes & Events, Classes and Translate with Supertext](images/role-permission.png)
 
-**Export for translation** needs the same permission and *View* on the document or object. **Import translation** needs the permission and, for each document or object in the file, the same rights as translating: *Save* on the existing translation or *Create* on the parent page's translation, or the object language's *Edit* restriction (`lEdit`); elements the user may not edit are reported and left alone.
+**Export for translation** needs the same permission and *View* on the document or object. **Import translation** needs the permission and, for each document or object in the file, the same rights as translating: *Save* on the existing translation or *Create* on the parent page's translation; for objects *Save* on the object and, where the workspace restricts languages, the language's *Edit* restriction (`lEdit`); elements the user may not edit are reported and left alone.
 
 The dialog shows languages the user may not edit as *Not allowed*: for data objects, the workspace's *Edit* language restrictions (`lEdit`) apply; for documents, the user needs *Save* on an existing translation or *Create* on the parent page's translation. Administrators may do everything.
 

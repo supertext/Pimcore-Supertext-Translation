@@ -4,6 +4,11 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## Unreleased
 
+### Security
+
+- Translating a data object (with the API or by importing a file) now needs *Save* on the object, as in Pimcore's own editor. Before, the object's language restrictions (`lEdit`) were checked but not *Save*, so a user who could only view an object could add a translated version.
+- *Translate* accepts only JSON requests, so another website can't start a translation in a signed-in user's browser.
+
 ## 1.1.0 — 2026-11-26
 
 - Added: Indonesian, Romanian, Thai and Vietnamese (`id`, `ro`, `th`, `vi`) can be chosen as Supertext languages, all with formal and informal address (Supertext SDK 0.7.0).
